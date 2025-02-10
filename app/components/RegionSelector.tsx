@@ -1,3 +1,4 @@
+import { fetchOnrampConfig } from '@coinbase/onchainkit/fund';
 import {
   Autocomplete,
   AutocompleteItem,
@@ -5,18 +6,50 @@ import {
   Skeleton,
 } from '@nextui-org/react';
 import { Key } from '@react-types/shared';
-import { useCoinbaseRampTransaction } from '../contexts/CoinbaseRampTransactionContext';
-import { useMemo } from 'react';
 import Image from 'next/image';
-export const RegionSelector = () => {
-  const {
-    countries,
-    setSelectedCountry,
-    selectedCountry,
-    setSelectedSubdivision,
-    selectedSubdivision,
-    loadingBuyConfig,
-  } = useCoinbaseRampTransaction();
+import { useEffect, useMemo, useState } from 'react';
+
+const mockCountries = [
+  {
+    id: 'US',
+    name: 'United States',
+    subdivisions: ['CA', 'NY', 'TX'],
+  },
+  {
+    id: 'CA',
+    name: 'Canada',
+    subdivisions: ['ON', 'BC', 'QC'],
+  },
+  {
+    id: 'MX',
+    name: 'Mexico',
+    subdivisions: ['MX', 'MX', 'MX'],
+  },
+];
+
+export const RegionSelector = ({
+  onCountryChange,
+  onSubdivisionChange,
+}: {
+  onCountryChange: (country: string) => void;
+  onSubdivisionChange: (subdivision: string) => void;
+}) => {
+  const [selectedCountry, setSelectedCountry] = useState(mockCountries[0]);
+  const [subdivision, setSubdivision] = useState('CA');
+  const [countries, setCountries] = useState([]);
+  // const [config, setConfig] = useState(null);
+  const [loadingBuyConfig, setLoadingBuyConfig] = useState(false);
+  useEffect(() => {
+    const fetchConfig = async () => {
+      setLoadingBuyConfig(true);
+      const config = await fetchOnrampConfig();
+
+      // TODO: Use actual countries from the config once util fix id available in prod https://github.com/coinbase/onchainkit/pull/1940
+      setCountries(mockCountries);
+      setLoadingBuyConfig(false);
+    };
+    fetchConfig();
+  }, []);
 
   const subdivisions = useMemo(() => {
     if (selectedCountry) {
@@ -28,9 +61,9 @@ export const RegionSelector = () => {
 
   const handleCountrySelectionChange = (selectedKey: Key | null) => {
     if (selectedKey) {
-      setSelectedCountry(
-        countries.find((country) => country.id === selectedKey)!
-      );
+      const country = countries.find((country) => country.id === selectedKey)!;
+      setSelectedCountry(country);
+      onCountryChange(country.id);
     }
   };
 
@@ -41,13 +74,14 @@ export const RegionSelector = () => {
       );
 
       if (subdivision) {
-        setSelectedSubdivision(subdivision);
+        setSubdivision(subdivision);
+        onSubdivisionChange(subdivision);
       }
     }
   };
 
   return (
-    <div className="flex flex-row justify-end gap-4 m-auto">
+    <div className="flex flex-row gap-4 m-auto">
       {loadingBuyConfig ? (
         <>
           <Skeleton className="h-10 w-[200px] rounded-lg" />
@@ -97,7 +131,7 @@ export const RegionSelector = () => {
               onSelectionChange={handleSubdivisionSelectionChange}
               className="max-w-[150px] mx-auto sm:mx-0"
               label="Select State/Division"
-              selectedKey={selectedSubdivision}
+              selectedKey={subdivision}
             >
               {subdivisions.map((subdivision) => (
                 <AutocompleteItem key={subdivision} value={subdivision}>

@@ -8,16 +8,16 @@ import { WagmiProvider } from './wagmiProvider';
 
 export function RootProvider({ children }: { children: React.ReactNode }) {
   return (
-    <NextUiProvider>
-      <WagmiProvider>
-        <QueryClientProvider>
-          <OnchainProvider>
+    <WagmiProvider>
+      <OnchainProvider>
+        <NextUiProvider>
+          <QueryClientProvider>
             <CoinbaseRampTransactionProvider>
               {children}
             </CoinbaseRampTransactionProvider>
-          </OnchainProvider>
-        </QueryClientProvider>
-      </WagmiProvider>
-    </NextUiProvider>
+          </QueryClientProvider>
+        </NextUiProvider>
+      </OnchainProvider>
+    </WagmiProvider>
   );
 }

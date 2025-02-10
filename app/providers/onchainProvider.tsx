@@ -14,6 +14,7 @@ export function OnchainProvider({ children }: Props) {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
       chain={base}
+      projectId={process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_ID}
     >
       {children}
     </OnchainKitProvider>

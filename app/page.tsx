@@ -6,9 +6,5 @@ const DynamicCryptoRampWrapper = dynamic(
 );
 
 export default function Home() {
-  return (
-    <div>
-      <DynamicCryptoRampWrapper />
-    </div>
-  );
+  return <DynamicCryptoRampWrapper />;
 }
