@@ -94,7 +94,7 @@ export const RegionSelector = ({
             variant="underlined"
             onSelectionChange={handleCountrySelectionChange}
             className="max-w-[200px] mx-auto sm:mx-0"
-            label="Select country"
+            label="country"
             selectedKey={selectedCountry?.id}
             startContent={
               selectedCountry && (
@@ -129,8 +129,8 @@ export const RegionSelector = ({
               isClearable={false}
               variant="underlined"
               onSelectionChange={handleSubdivisionSelectionChange}
-              className="max-w-[150px] mx-auto sm:mx-0"
-              label="Select State/Division"
+              className="max-w-[200px] mx-auto sm:mx-0"
+              label="subdivision"
               selectedKey={subdivision}
             >
               {subdivisions.map((subdivision) => (
