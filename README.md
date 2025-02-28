@@ -20,15 +20,15 @@ yarn
 
 ### CDP (Coinbase Developer Platform) setup
 
-#### Enable Onramp on [CDP](portal.cdp.coinbase.com)
+#### Enable Onramp on [CDP](https://portal.cdp.coinbase.com)
 
 ![onramp option](/readme-assets/onramp-menu-bar-view.png)
 
-#### Issue API Key, that will be used in .env file on [CDP](portal.cdp.coinbase.com)
+#### Issue API Key, that will be used in .env file on [CDP](https://portal.cdp.coinbase.com)
 
 ![cdp api key](/readme-assets/cdp-api-key-view.png)
 
-#### Issue OnchainKit API Key on [CDP](portal.cdp.coinbase.com)
+#### Issue OnchainKit API Key on [CDP](https://portal.cdp.coinbase.com)
 
 ![onchainkit api key](/readme-assets/onchainkit-setup.png)
 
