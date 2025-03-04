@@ -1,17 +1,17 @@
 # Coinbase Onramp Demo App
 
-This project serves to be a demo to utilize Coinbase Onramp 
+TThis project serves as a demo to utilize Coinbase Onramp 
 
 ## Getting Started
 
 ### Environment Setup
 
-Install System Dependencies
+Install the system dependencies
 
 - Nodejs
 - yarn
 
-Install App dependencies
+Install the app dependencies
 
 ```bash
 yarn
@@ -34,7 +34,7 @@ yarn
 
 Add API Keys into your .env file
 
-### Running the app
+### Running the App Locally
 run the development server:
 
 ```bash
