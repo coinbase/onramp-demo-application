@@ -14,6 +14,7 @@
     "@coinbase/onchainkit": "^0.36.11",
     "@heroicons/react": "^2.1.5",
     "@nextui-org/react": "^2.4.8",
+    "@privy-io/react-auth": "^2.6.2",
     "@tanstack/react-query": "^5.56.2",
     "axios": "^1.7.7",
     "framer-motion": "^11.5.6",
