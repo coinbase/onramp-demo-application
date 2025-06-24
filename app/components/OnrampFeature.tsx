@@ -181,6 +181,8 @@ export default function OnrampFeature() {
   const [selectedState, setSelectedState] = useState("");
   const [cryptoPrices, setCryptoPrices] = useState<Record<string, number>>({});
   const [isLoadingPrices, setIsLoadingPrices] = useState(false);
+  const [useSecureInit, setUseSecureInit] = useState(true);
+  const [isGeneratingToken, setIsGeneratingToken] = useState(false);
 
   // Define supported payment methods
   const paymentMethods = [
@@ -359,11 +361,72 @@ export default function OnrampFeature() {
     }
   };
 
+  // Generate session token
+  const generateSessionToken = async () => {
+    if (!address) {
+      alert("Please connect your wallet first");
+      return null;
+    }
+
+    try {
+      setIsGeneratingToken(true);
+      
+      // Prepare addresses array based on selected network
+      const addresses = [{
+        address: address,
+        blockchains: [selectedNetwork]
+      }];
+      
+      // Make request to our API endpoint
+      const response = await fetch('/api/session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          addresses,
+          assets: [selectedAsset],
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate session token');
+      }
+
+      const data = await response.json();
+      
+      // Check if this is a mock token
+      if (data.mock) {
+        console.warn('Using mock session token. In production, configure CDP API credentials.');
+        // For demo purposes, we'll skip using the session token
+        return null;
+      }
+      
+      return data.token;
+    } catch (error) {
+      console.error('Error generating session token:', error);
+      alert(`Session token generation failed. The transaction will proceed with standard authentication.\n\nFor production use, ensure your CDP API credentials are properly configured.`);
+      return null;
+    } finally {
+      setIsGeneratingToken(false);
+    }
+  };
+
   // Generate one-time URL
-  const handleGenerateUrl = () => {
+  const handleGenerateUrl = async () => {
     if (!address && activeTab === "url") {
       alert("Please connect your wallet first");
       return;
+    }
+
+    let sessionToken: string | undefined;
+    
+    // Generate session token if secure init is enabled
+    if (useSecureInit) {
+      const token = await generateSessionToken();
+      if (!token) return; // Exit if token generation failed
+      sessionToken = token;
     }
 
     const url = generateOnrampURL({
@@ -375,6 +438,7 @@ export default function OnrampFeature() {
       address: address || "0x0000000000000000000000000000000000000000",
       redirectUrl: window.location.origin + "/onramp",
       enableGuestCheckout, // Add guest checkout option
+      sessionToken, // Include session token if generated
     });
 
     setGeneratedUrl(url);
@@ -382,10 +446,19 @@ export default function OnrampFeature() {
   };
 
   // Handle direct onramp
-  const handleOnramp = () => {
+  const handleOnramp = async () => {
     if (!isConnected) {
       alert("Please connect your wallet first");
       return;
+    }
+
+    let sessionToken: string | undefined;
+    
+    // Generate session token if secure init is enabled
+    if (useSecureInit) {
+      const token = await generateSessionToken();
+      if (!token) return; // Exit if token generation failed
+      sessionToken = token;
     }
 
     // Note: This is a demo app - actual payments require ownership of assets and sufficient funds
@@ -398,6 +471,7 @@ export default function OnrampFeature() {
       address: address || "0x0000000000000000000000000000000000000000",
       redirectUrl: window.location.origin + "/onramp",
       enableGuestCheckout, // Add guest checkout option
+      sessionToken, // Include session token if generated
     });
 
     window.open(url, "_blank");
@@ -699,51 +773,66 @@ export default function OnrampFeature() {
                 )}
               </div>
 
-              {/* Guest Checkout Toggle */}
-              <div className="mb-8">
-                <div className="flex items-center justify-between">
-                  <label className="text-gray-700 font-medium">
+              {/* Guest Checkout Option */}
+              <div className="mb-6">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={enableGuestCheckout}
+                    onChange={(e) => setEnableGuestCheckout(e.target.checked)}
+                    className="mr-3 h-5 w-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
+                  />
+                  <span className="text-gray-700 dark:text-gray-300 font-medium">
                     Enable Guest Checkout
-                  </label>
-                  <div
-                    className={`relative inline-block w-12 h-6 transition-colors duration-200 ease-in-out rounded-full ${
-                      enableGuestCheckout ? "bg-blue-600" : "bg-gray-300"
-                    }`}
-                    onClick={() => setEnableGuestCheckout(!enableGuestCheckout)}
-                  >
-                    <span
-                      className={`absolute left-1 top-1 w-4 h-4 transition-transform duration-200 ease-in-out bg-white rounded-full ${
-                        enableGuestCheckout ? "transform translate-x-6" : ""
-                      }`}
-                    ></span>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-500 mt-1">
-                  Allow users to checkout without a Coinbase account
+                  </span>
+                </label>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 ml-8">
+                  Allow users to checkout without a crypto wallet
                 </p>
               </div>
 
+              {/* Secure Initialization Info */}
+              <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div className="flex items-start">
+                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                      Secure Session Enabled
+                    </p>
+                    <p className="text-sm text-blue-800 dark:text-blue-300 mt-1">
+                      This transaction uses secure session tokens for enhanced security.{" "}
+                      <a 
+                        href="https://docs.cdp.coinbase.com/onramp/docs/api-onramp-initializing#getting-a-session-token"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline hover:text-blue-700 dark:hover:text-blue-200"
+                      >
+                        Learn more
+                      </a>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* Action Button */}
-              {activeTab === "api" ? (
-                <button
-                  onClick={handleOnramp}
-                  disabled={!isConnected}
-                  className={`w-full py-3 px-4 rounded-lg font-medium transition-all ${
-                    isConnected
-                      ? "bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg"
-                      : "bg-gray-600 text-gray-300 cursor-not-allowed"
-                  }`}
-                >
-                  {isConnected ? "Start Onramp" : "Connect Wallet to Continue"}
-                </button>
-              ) : (
-                <button
-                  onClick={handleGenerateUrl}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-all shadow-md hover:shadow-lg"
-                >
-                  Generate Payment Link
-                </button>
-              )}
+              <button
+                onClick={activeTab === "api" ? handleOnramp : handleGenerateUrl}
+                disabled={!isConnected || isGeneratingToken}
+                className={`w-full font-medium py-3 px-4 rounded-lg transition-all shadow-md hover:shadow-lg ${
+                  !isConnected || isGeneratingToken
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                }`}
+              >
+                {isGeneratingToken 
+                  ? "Generating Session Token..." 
+                  : activeTab === "api" 
+                    ? "Buy Crypto Now" 
+                    : "Generate Payment URL"
+                }
+              </button>
             </div>
 
             {/* Preview Section */}
