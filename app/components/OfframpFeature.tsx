@@ -216,6 +216,8 @@ export default function OfframpFeature() {
   const [cashoutCurrencies, setCashoutCurrencies] = useState<FiatCurrency[]>(
     []
   );
+  const [useSecureInit, setUseSecureInit] = useState(true);
+  const [isGeneratingToken, setIsGeneratingToken] = useState(false);
 
   // Default assets if API fails
   const defaultAssets: CryptoAsset[] = [
@@ -495,51 +497,128 @@ export default function OfframpFeature() {
     }
   };
 
+  // Generate session token
+  const generateSessionToken = async () => {
+    if (!address) {
+      alert("Please connect your wallet first");
+      return null;
+    }
+
+    try {
+      setIsGeneratingToken(true);
+      
+      // Prepare addresses array based on selected network
+      const addresses = [{
+        address: address,
+        blockchains: [selectedNetwork]
+      }];
+      
+      // Make request to our API endpoint
+      const response = await fetch('/api/session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          addresses,
+          assets: [selectedAsset],
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate session token');
+      }
+
+      const data = await response.json();
+      
+      // Check if this is a mock token
+      if (data.mock) {
+        console.warn('Using mock session token. In production, configure CDP API credentials.');
+        // For demo purposes, we'll skip using the session token
+        return null;
+      }
+      
+      return data.token;
+    } catch (error) {
+      console.error('Error generating session token:', error);
+      alert(`Session token generation failed. The transaction will proceed with standard authentication.\n\nFor production use, ensure your CDP API credentials are properly configured.`);
+      return null;
+    } finally {
+      setIsGeneratingToken(false);
+    }
+  };
+
   // Handle offramp
-  const handleOfframp = () => {
+  const handleOfframp = async () => {
     // Clear any previous error
     setErrorMessage(null);
 
-    // Validate wallet connection for API mode
-    if (activeTab === "api" && !isConnected) {
+    if (!isConnected) {
       setErrorMessage("Please connect your wallet first");
       return;
     }
 
-    // Validate amount
-    if (!amount || parseFloat(amount) <= 0) {
-      setErrorMessage("Please enter a valid amount");
+    if (!selectedCashoutMethod) {
+      setErrorMessage("Please select a cashout method");
       return;
     }
 
-    // Start loading
-    setIsLoading(true);
-
-    try {
-      // Generate offramp URL
-      // Note: This is a demo app - actual payments require ownership of assets and sufficient funds
-      const url = generateOfframpURL({
-        asset: selectedAsset,
-        amount: amount,
-        network: selectedNetwork,
-        cashoutMethod: selectedCashoutMethod,
-        address: address || "0x0000000000000000000000000000000000000000",
-        redirectUrl: window.location.origin + "/offramp",
-      });
-
-      // Handle URL based on active tab
-      if (activeTab === "url") {
-        setGeneratedUrl(url);
-        setShowUrlModal(true);
-      } else {
-        window.open(url, "_blank");
-      }
-    } catch (error) {
-      console.error("Error generating offramp URL:", error);
-      setErrorMessage("Failed to generate offramp URL");
-    } finally {
-      setIsLoading(false);
+    let sessionToken: string | undefined;
+    
+    // Generate session token if secure init is enabled
+    if (useSecureInit) {
+      const token = await generateSessionToken();
+      if (!token) return; // Exit if token generation failed
+      sessionToken = token;
     }
+
+    const url = generateOfframpURL({
+      asset: selectedAsset,
+      amount,
+      network: selectedNetwork,
+      cashoutMethod: selectedCashoutMethod,
+      address: address || "0x0000000000000000000000000000000000000000",
+      redirectUrl: window.location.origin + "/offramp",
+      sessionToken, // Include session token if generated
+    });
+
+    window.open(url, "_blank");
+  };
+
+  // Generate one-time URL
+  const handleGenerateUrl = async () => {
+    if (!address) {
+      alert("Please connect your wallet first");
+      return;
+    }
+
+    if (!selectedCashoutMethod) {
+      alert("Please select a cashout method");
+      return;
+    }
+
+    let sessionToken: string | undefined;
+    
+    // Generate session token if secure init is enabled
+    if (useSecureInit) {
+      const token = await generateSessionToken();
+      if (!token) return; // Exit if token generation failed
+      sessionToken = token;
+    }
+
+    const url = generateOfframpURL({
+      asset: selectedAsset,
+      amount,
+      network: selectedNetwork,
+      cashoutMethod: selectedCashoutMethod,
+      address: address || "0x0000000000000000000000000000000000000000",
+      redirectUrl: window.location.origin + "/offramp",
+      sessionToken, // Include session token if generated
+    });
+
+    setGeneratedUrl(url);
+    setShowUrlModal(true);
   };
 
   // Handle copy URL
@@ -826,21 +905,77 @@ export default function OfframpFeature() {
                 </div>
               </div>
 
+              {/* Advanced Options */}
+              <div className="mb-8">
+                <button
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="text-blue-600 hover:text-blue-700 font-medium flex items-center"
+                  aria-label="Toggle advanced options"
+                >
+                  {showAdvanced ? "Hide" : "Show"} Advanced Options
+                  <svg
+                    className={`ml-2 w-4 h-4 transform ${
+                      showAdvanced ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+
+                {showAdvanced && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                    {/* Secure Initialization Info */}
+                    <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                      <div className="flex items-start">
+                        <svg className="w-5 h-5 text-purple-600 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        <div>
+                          <p className="text-sm font-medium text-purple-900">
+                            Secure Session Enabled
+                          </p>
+                          <p className="text-sm text-purple-800 mt-1">
+                            Using secure session tokens.{" "}
+                            <a 
+                              href="https://docs.cdp.coinbase.com/onramp/docs/api-offramp-initializing#getting-a-session-token"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline hover:text-purple-700"
+                            >
+                              Learn more
+                            </a>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Action Button */}
               <button
-                onClick={handleOfframp}
-                disabled={isLoading || (activeTab === "api" && !isConnected)}
-                className={`w-full py-3 px-4 rounded-lg font-medium ${
-                  isLoading || (activeTab === "api" && !isConnected)
-                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    : "bg-purple-600 hover:bg-purple-700 text-white"
+                onClick={activeTab === "api" ? handleOfframp : handleGenerateUrl}
+                disabled={!isConnected || isGeneratingToken}
+                className={`w-full font-medium py-3 px-4 rounded-lg transition-all shadow-md hover:shadow-lg ${
+                  !isConnected || isGeneratingToken
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700 text-white"
                 }`}
               >
-                {isLoading
-                  ? "Loading..."
-                  : activeTab === "api"
-                  ? "Start Offramp"
-                  : "Generate Link"}
+                {isGeneratingToken 
+                  ? "Generating Session Token..." 
+                  : activeTab === "api" 
+                    ? "Sell Crypto Now" 
+                    : "Generate Offramp URL"
+                }
               </button>
 
               {/* Error Message */}

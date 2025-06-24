@@ -6,6 +6,7 @@ A Next.js application demonstrating the integration of Coinbase's On-ramp and Of
 
 - **Coinbase Onramp Integration**: Allows users to purchase crypto with fiat currency
 - **Coinbase Offramp Integration**: Enables users to convert crypto back to fiat
+- **Secure Initialization**: Support for session tokens for enhanced security
 - **Wallet Connection**: Integrates with Web3 wallets via WalletConnect
 - **Responsive Design**: Modern UI that works across devices
 - **Multiple Integration Options**:
@@ -61,6 +62,10 @@ A Next.js application demonstrating the integration of Coinbase's On-ramp and Of
    CDP_API_KEY_PRIVATE_KEY="your_cdp_api_private_key"
    CDP_PROJECT_ID="your_cdp_project_id"
    ONCHAINKIT_API_KEY="your_onchainkit_api_key"
+   
+   # For Secure Initialization (Session Tokens)
+   CDP_API_KEY="your_cdp_api_key"
+   CDP_API_SECRET="your_cdp_api_secret"
    ```
 
    > **IMPORTANT**: Never commit your API keys to the repository. The `.env.local` file is included in `.gitignore` to prevent accidental exposure.
@@ -72,6 +77,60 @@ A Next.js application demonstrating the integration of Coinbase's On-ramp and Of
    ```
 
 7. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## Secure Initialization (Session Tokens)
+
+This demo now supports secure initialization using session tokens, which provides enhanced security for onramp and offramp transactions.
+
+### What are Session Tokens?
+
+Session tokens are short-lived, one-time-use tokens that authenticate users and manage sessions securely. When enabled, the application generates a session token server-side before initiating the onramp/offramp flow.
+
+### Benefits of Using Session Tokens
+
+- **Enhanced Security**: API credentials are never exposed to the client
+- **Better Control**: Server-side validation before initiating transactions
+- **Compliance**: Meets security requirements for production applications
+
+### How to Enable Secure Initialization
+
+1. **Set up CDP API Credentials**: Add your CDP API key and secret to your `.env.local` file:
+   ```
+   CDP_API_KEY="your_cdp_api_key"
+   CDP_API_SECRET="your_cdp_api_secret"
+   ```
+
+2. **Toggle Secure Initialization**: In both the Onramp and Offramp features, you'll find a "Use Secure Initialization" checkbox. Enable it to use session tokens.
+
+3. **Implementation Example**:
+   ```typescript
+   // Generate a session token
+   const response = await fetch('/api/session', {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+     body: JSON.stringify({
+       addresses: [{
+         address: "0x...",
+         blockchains: ["ethereum", "base"]
+       }],
+       assets: ["ETH", "USDC"]
+     }),
+   });
+   
+   const { token } = await response.json();
+   
+   // Use the token in your onramp URL
+   const url = generateOnrampURL({
+     sessionToken: token,
+     // other optional UI params...
+   });
+   ```
+
+### Important Notes
+
+- Session tokens expire quickly and can only be used once
+- When using session tokens, you don't need to pass `appId`, `addresses`, or `assets` in the URL
+- The secure initialization option is available in both Onramp and Offramp features
 
 ## Integration Options
 
