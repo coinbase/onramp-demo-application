@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@coinbase/cdp-sdk": "^1.21.0",
     "@coinbase/onchainkit": "latest",
     "@nextui-org/react": "^2.6.11",
     "@privy-io/react-auth": "^2.6.2",

@@ -1,8 +1,7 @@
 /**
  * Session Token API utilities for secure initialization
  */
-import * as crypto from 'crypto';
-import * as jwt from 'jsonwebtoken';
+import { generateJwt } from '@coinbase/cdp-sdk/auth';
 
 interface SessionTokenRequest {
   addresses: Array<{
@@ -18,77 +17,31 @@ interface SessionTokenResponse {
 }
 
 /**
- * Formats a private key into proper PEM format
- * @param keySecret - The private key (base64 or PEM format)
- * @returns Properly formatted PEM private key
- */
-export function formatPrivateKey(keySecret: string): string {
-  // Remove any whitespace
-  keySecret = keySecret.trim();
-  
-  // Check if it already has PEM headers
-  if (keySecret.includes('BEGIN EC PRIVATE KEY')) {
-    return keySecret;
-  }
-  
-  // If it's just the base64 content, wrap it with PEM headers
-  // Split the base64 string into lines of 64 characters
-  const base64Lines = keySecret.match(/.{1,64}/g) || [];
-  const pemFormatted = [
-    '-----BEGIN EC PRIVATE KEY-----',
-    ...base64Lines,
-    '-----END EC PRIVATE KEY-----'
-  ].join('\n');
-  
-  return pemFormatted;
-}
-
-/**
- * Generates a JWT token for CDP API authentication
+ * Generates a JWT token for CDP API authentication using the CDP SDK
  * @param keyName - The CDP API key name
  * @param keySecret - The CDP API private key
- * @returns Signed JWT token
+ * @returns Promise of signed JWT token
  */
-export function generateJWT(keyName: string, keySecret: string): string {
+export async function generateJWT(keyName: string, keySecret: string): Promise<string> {
   const requestMethod = 'POST';
   const requestHost = 'api.developer.coinbase.com';
   const requestPath = '/onramp/v1/token';
   
-  // Construct the URI as per CDP documentation
-  const uri = `${requestMethod} ${requestHost}${requestPath}`;
-  
-  const payload = {
-    iss: 'cdp',
-    nbf: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + 120, // JWT expires in 120 seconds
-    sub: keyName,
-    uri,
-  };
-
-  const header = {
-    alg: 'ES256',
-    kid: keyName,
-    nonce: crypto.randomBytes(16).toString('hex'),
-  };
-
   try {
-    // Format and parse the private key
-    const formattedKey = formatPrivateKey(keySecret);
-    console.log('Attempting to parse private key...');
-    
-    // Try to create the private key object
-    const privateKey = crypto.createPrivateKey({
-      key: formattedKey,
-      format: 'pem',
-      type: 'sec1' // EC private key format
+    // Use the CDP SDK to generate the JWT
+    const token = await generateJwt({
+      apiKeyId: keyName,
+      apiKeySecret: keySecret,
+      requestMethod: requestMethod,
+      requestHost: requestHost,
+      requestPath: requestPath,
+      expiresIn: 120 // optional (defaults to 120 seconds)
     });
-
-    // Sign the JWT with the private key
-    return jwt.sign(payload, privateKey, { algorithm: 'ES256', header });
+    
+    return token;
   } catch (error) {
-    console.error('Error parsing private key:', error);
-    // If parsing fails, try with the key as-is (backward compatibility)
-    return jwt.sign(payload, keySecret, { algorithm: 'ES256', header });
+    console.error('Error generating JWT:', error);
+    throw error;
   }
 }
 
