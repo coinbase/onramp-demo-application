@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { formatPrivateKey, generateJWT } from '../../utils/sessionTokenApi';
+import { generateJWT } from '../../utils/sessionTokenApi';
 
 // Types for session token request
 interface SessionTokenRequest {
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     // Generate JWT for authentication
     let jwtToken: string;
     try {
-      jwtToken = generateJWT(keyName, keySecret);
+      jwtToken = await generateJWT(keyName, keySecret);
       console.log('JWT generated successfully');
     } catch (error) {
       console.error('JWT generation failed:', error);
