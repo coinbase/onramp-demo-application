@@ -30,7 +30,7 @@ export default function Hero() {
         </div>
       )}
 
-      <div className="container mx-auto px-4 py-24 md:py-40 relative z-10">
+      <div className="container mx-auto px-4 py-16 md:py-32 relative z-10">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 mb-6">

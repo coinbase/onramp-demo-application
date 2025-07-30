@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { Header } from "../components/Header";
+import { Footer } from "../components/Footer";
 import OnrampFeature from "../components/OnrampFeature";
 
 export default function OnrampPage() {
@@ -58,6 +59,7 @@ export default function OnrampPage() {
         {/* Main content */}
         <OnrampFeature />
       </main>
+      <Footer />
     </div>
   );
 }

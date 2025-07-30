@@ -1,9 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { Header } from "../components/Header";
-import { useState } from "react";
+import { Footer } from "../components/Footer";
 import { FundCardDemo } from "../components/FundCardDemo";
 import { FundButton } from "../components/FundButton";
 import { SimpleFundCard } from "../components/SimpleFundCard";
@@ -656,6 +656,7 @@ export default function FundPage() {
           </div>
         </section>
       </main>
+      <Footer />
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import React, { useEffect, Suspense } from "react";
 import Link from "next/link";
 import { Header } from "../components/Header";
+import { Footer } from "../components/Footer";
 import OfframpFeature from "../components/OfframpFeature";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -90,6 +91,7 @@ export default function OfframpPage() {
       <Suspense fallback={<OfframpLoading />}>
         <OfframpContent />
       </Suspense>
+      <Footer />
     </div>
   );
 }
