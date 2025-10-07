@@ -542,7 +542,8 @@ export default function OfframpFeature() {
       return data.token;
     } catch (error) {
       console.error('Error generating session token:', error);
-      alert(`Session token generation failed. The transaction will proceed with standard authentication.\n\nFor production use, ensure your CDP API credentials are properly configured.`);
+      // Don't show alert - just proceed without session token
+      // The offramp will work with projectId/addresses instead
       return null;
     } finally {
       setIsGeneratingToken(false);
@@ -569,8 +570,8 @@ export default function OfframpFeature() {
     // Generate session token if secure init is enabled
     if (useSecureInit) {
       const token = await generateSessionToken();
-      if (!token) return; // Exit if token generation failed
-      sessionToken = token;
+      // If token generation fails, continue without it (will use projectId/addresses)
+      sessionToken = token || undefined;
     }
 
     const url = generateOfframpURL({
@@ -603,8 +604,8 @@ export default function OfframpFeature() {
     // Generate session token if secure init is enabled
     if (useSecureInit) {
       const token = await generateSessionToken();
-      if (!token) return; // Exit if token generation failed
-      sessionToken = token;
+      // If token generation fails, continue without it (will use projectId/addresses)
+      sessionToken = token || undefined;
     }
 
     const url = generateOfframpURL({

@@ -66,6 +66,9 @@ A Next.js application demonstrating the integration of Coinbase's On-ramp and Of
    # For Secure Initialization (Session Tokens)
    CDP_API_KEY="your_cdp_api_key"
    CDP_API_SECRET="your_cdp_api_secret"
+   
+   # CORS Security (Production) - Add your production domains
+   ALLOWED_ORIGINS="https://yourdomain.com,https://www.yourdomain.com"
    ```
 
    > **IMPORTANT**: Never commit your API keys to the repository. The `.env.local` file is included in `.gitignore` to prevent accidental exposure.
@@ -77,6 +80,55 @@ A Next.js application demonstrating the integration of Coinbase's On-ramp and Of
    ```
 
 7. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## Security Requirements (Coinbase CDP)
+
+This demo implements **required security measures** as specified by Coinbase Developer Platform:
+
+### CORS Protection (Required)
+
+All session token API endpoints implement CORS headers to prevent unauthorized access:
+
+- ✅ Only allows requests from approved origins
+- ✅ Rejects requests from unauthorized domains  
+- ✅ Prevents malicious websites from hijacking your API
+
+**Configuration:**
+
+The API endpoints (`/api/session` and `/api/fund/session`) automatically:
+- Allow `localhost:3000` and `localhost:3001` for development
+- Check the `ALLOWED_ORIGINS` environment variable for production domains
+
+**For Production:** The following domains are configured by default:
+- `https://onramp-demo-application-git-main-coinbase-vercel.vercel.app`
+- `https://www.onrampdemo.com`
+
+To add additional domains, set the `ALLOWED_ORIGINS` environment variable:
+```bash
+ALLOWED_ORIGINS="https://yourdomain.com,https://www.yourdomain.com"
+```
+
+### Rate Limiting (Implemented)
+
+- ✅ 10 requests per minute for `/api/session`
+- ✅ 20 requests per minute for `/api/fund/session`
+- ✅ Per-IP tracking to prevent abuse
+
+### Input Validation (Implemented)
+
+- ✅ Zod schema validation on all inputs
+- ✅ Address format validation
+- ✅ Blockchain network validation
+
+### Secure Logging (Implemented)
+
+- ✅ No sensitive data (API keys, tokens) in logs
+- ✅ Structured logging for security events
+- ✅ Request tracking for audit purposes
+
+**⚠️ Important:** These security measures are **required** by Coinbase to prevent unauthorized usage of onramp sessions. Failure to implement these measures may result in unauthorized access to your integration.
+
+For more information, see: [Coinbase Security Requirements](https://docs.cdp.coinbase.com/onramp/docs/security-requirements)
 
 ## Secure Initialization (Session Tokens)
 

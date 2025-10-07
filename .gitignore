@@ -26,8 +26,20 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
-.env*.local
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# API keys and secrets - NEVER commit these!
+*.key
+*.secret
+api_keys/
+cdp_api_key.json
+.coinbase_cloud_api_key.json
+**/cdp_api_key.json
 
 # vercel
 .vercel
@@ -35,4 +47,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-api_keys/cdp_api_key.json
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db

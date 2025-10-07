@@ -28,10 +28,17 @@ export async function generateJWT(keyName: string, keySecret: string): Promise<s
   const requestPath = '/onramp/v1/token';
   
   try {
+    // Process the private key to ensure it has proper newlines
+    // Replace literal \n with actual newlines if needed
+    let processedKey = keySecret;
+    if (keySecret.includes('\\n')) {
+      processedKey = keySecret.replace(/\\n/g, '\n');
+    }
+    
     // Use the CDP SDK to generate the JWT
     const token = await generateJwt({
       apiKeyId: keyName,
-      apiKeySecret: keySecret,
+      apiKeySecret: processedKey,
       requestMethod: requestMethod,
       requestHost: requestHost,
       requestPath: requestPath,

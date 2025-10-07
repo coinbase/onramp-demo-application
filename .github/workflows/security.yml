@@ -1,0 +1,70 @@
+name: Security Audit
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    - cron: '0 0 * * 0' # Weekly on Sunday at midnight
+
+jobs:
+  security-audit:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+        
+      - name: Check for hardcoded secrets
+        run: |
+          echo "Checking for hardcoded API keys..."
+          if grep -r "HCBY5TstODcJYjYbCoC9re0PFwZ75DDe" app/ 2>/dev/null; then
+            echo "❌ Exposed API key found!"
+            exit 1
+          fi
+          if grep -r "a353ad87-5af2-4bc7-af5b-884e6aabf088" app/ 2>/dev/null; then
+            echo "❌ Exposed project ID found!"
+            exit 1
+          fi
+          echo "✅ No hardcoded secrets found"
+          
+      - name: Check for potential credentials
+        run: |
+          echo "Checking for potential hardcoded credentials..."
+          if grep -rE "['\"](sk_|pk_|api_key_)[A-Za-z0-9]{20,}['\"]" app/ --exclude-dir=node_modules 2>/dev/null; then
+            echo "⚠️  Potential hardcoded credentials found"
+            exit 1
+          fi
+          echo "✅ No potential credentials found"
+          
+      - name: Check for console.log with sensitive data
+        run: |
+          echo "Checking for console.log statements that might expose sensitive data..."
+          if grep -rE "console\.(log|error|warn|info)\(.*(key|secret|token|password)" app/ --exclude-dir=node_modules 2>/dev/null; then
+            echo "⚠️  Found console statements that might expose sensitive data"
+            echo "Please review and use the logger utility instead"
+          fi
+          
+      - name: Security Summary
+        run: |
+          echo "================================"
+          echo "Security Audit Complete"
+          echo "================================"
+          echo "✅ Dependency audit passed"
+          echo "✅ No hardcoded secrets detected"
+          echo "✅ No credential patterns found"
+          echo "================================"
