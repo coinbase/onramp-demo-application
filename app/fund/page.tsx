@@ -7,6 +7,7 @@ import { Footer } from "../components/Footer";
 import { FundCardDemo } from "../components/FundCardDemo";
 import { FundButton } from "../components/FundButton";
 import { SimpleFundCard } from "../components/SimpleFundCard";
+import { FundCardWithSessionToken } from "../components/FundCardWithSessionToken";
 import { useCoinbaseRampTransaction } from "../contexts/CoinbaseRampTransactionContext";
 import { CustomIntegrationDemo } from "../components/CustomIntegrationDemo";
 import { useAccount } from "wagmi";
@@ -390,18 +391,23 @@ export default function FundPage() {
                   <div className="flex-grow flex items-center justify-center">
                     {isConnected ? (
                       <div className="w-full max-w-sm">
-                        <FundCard
+                        {/* Using custom FundCardWithSessionToken for secure initialization */}
+                        <FundCardWithSessionToken
                           assetSymbol={assetSymbol}
                           country={country}
                           currency={currency}
                           headerText={headerText}
                           buttonText={buttonText}
                           presetAmountInputs={
-                            showPresetAmounts
-                              ? (presetAmountInputs as any)
+                            showPresetAmounts && presetAmountInputs.length === 3
+                              ? ([presetAmountInputs[0], presetAmountInputs[1], presetAmountInputs[2]] as const)
                               : undefined
                           }
                         />
+                        
+                        {/* Note: The default <FundCard /> component doesn't support session tokens
+                            when "Enforce secure initialization" is enabled in CDP Dashboard.
+                            We use a custom implementation that generates session tokens server-side. */}
                       </div>
                     ) : (
                       <div className="p-4 border rounded-lg bg-yellow-50 text-yellow-700">

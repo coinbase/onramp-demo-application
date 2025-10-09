@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   FundButton as CoinbaseFundButton,
   getOnrampBuyUrl,
 } from "@coinbase/onchainkit/fund";
 import { useAccount } from "wagmi";
+import { useSessionToken } from "../hooks/useSessionToken";
 
 interface FundButtonProps {
   customText?: string;
@@ -26,90 +27,59 @@ export function FundButton({
 }: FundButtonProps) {
   const { address, isConnected } = useAccount();
   const [error, setError] = useState<string | null>(null);
-  const [cdpProjectId, setCdpProjectId] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [fundingUrl, setFundingUrl] = useState<string | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(false);
+  const { generateToken, isGenerating } = useSessionToken();
+  
+  const cdpProjectId = process.env.NEXT_PUBLIC_CDP_PROJECT_ID || "";
 
-  // Fetch CDP Project ID from both client and server
-  useEffect(() => {
-    // First try to get it from client-side env vars
-    const clientCdpProjectId = process.env.NEXT_PUBLIC_CDP_PROJECT_ID || "";
-
-    if (clientCdpProjectId) {
-      console.log("Using client-side CDP Project ID");
-      setCdpProjectId(clientCdpProjectId);
-      setIsLoading(false);
+  // Generate funding URL with session token
+  const generateFundingUrl = useCallback(async () => {
+    if (!address || !cdpProjectId) {
       return;
     }
 
-    // If not available client-side, try to fetch from server
-    const fetchCdpProjectId = async () => {
-      try {
-        console.log("Fetching CDP Project ID from server...");
-        setIsLoading(true);
+    try {
+      setIsLoading(true);
+      setError(null);
 
-        const response = await fetch("/api/auth", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log("Auth API response:", data);
-
-        if (data.success && data.config.cdpProjectId) {
-          console.log("Using server-side CDP Project ID");
-          setCdpProjectId(data.config.cdpProjectId);
-        } else {
-          setError("CDP Project ID not found in server response");
-        }
-      } catch (err) {
-        console.error("Error fetching CDP Project ID:", err);
-        setError(err instanceof Error ? err.message : "Unknown error");
-      } finally {
-        setIsLoading(false);
+      // Generate session token
+      const sessionToken = await generateToken(address, ["base"]);
+      
+      if (!sessionToken) {
+        setError("Failed to generate session token");
+        return;
       }
-    };
 
-    fetchCdpProjectId();
-  }, []);
+      // Generate funding URL with session token
+      // ✅ When using sessionToken, do NOT include projectId, addresses, or assets
+      // They are already encoded in the session token
+      const url = getOnrampBuyUrl({
+        sessionToken,
+        presetFiatAmount: presetAmount,
+        fiatCurrency: "USD",
+      });
 
-  // Log environment variable status for debugging
+      setFundingUrl(url);
+    } catch (err) {
+      console.error("Error generating funding URL:", err);
+      setError("Failed to generate funding URL");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [address, cdpProjectId, presetAmount, generateToken]);
+
+  // Generate funding URL when component mounts or address changes
   useEffect(() => {
-    console.log("Environment variables status:");
-    console.log("- CDP Project ID:", cdpProjectId ? "Set" : "Not set");
-    console.log("- Address:", address || "Not connected");
-    console.log("- Using custom URL:", useCustomUrl);
-  }, [cdpProjectId, address, useCustomUrl]);
+    if (isConnected && address && cdpProjectId) {
+      generateFundingUrl();
+    }
+  }, [isConnected, address, cdpProjectId, generateFundingUrl]);
 
-  // Generate custom onramp URL if requested
-  const customOnrampUrl =
-    useCustomUrl && isConnected && address && cdpProjectId
-      ? (() => {
-          try {
-            return getOnrampBuyUrl({
-              projectId: cdpProjectId,
-              addresses: { [address]: ["base"] },
-              assets: ["ETH", "USDC"],
-              presetFiatAmount: presetAmount,
-              fiatCurrency: "USD",
-            });
-          } catch (err) {
-            console.error("Error generating onramp URL:", err);
-            setError("Failed to generate onramp URL");
-            return undefined;
-          }
-        })()
-      : undefined;
-
-  if (isLoading) {
+  if (isLoading || isGenerating) {
     return (
       <div className="p-4 border rounded-lg bg-gray-50">
-        <p className="text-center">Loading configuration...</p>
+        <p className="text-center">Generating secure session...</p>
       </div>
     );
   }
@@ -122,27 +92,12 @@ export function FundButton({
     );
   }
 
-  if (useCustomUrl && !cdpProjectId) {
+  if (!cdpProjectId) {
     return (
       <div className="p-4 border rounded-lg bg-red-50 text-red-700">
-        <p className="font-bold">Error:</p>
-        <p>
-          CDP Project ID is not available. Please check your environment
-          variables.
-        </p>
-        <p className="mt-2 text-sm">
-          Make sure <code>NEXT_PUBLIC_CDP_PROJECT_ID</code> is set in your
-          Vercel project settings.
-        </p>
-        <p className="mt-2 text-sm">
-          <a
-            href="https://vercel.com/docs/projects/environment-variables"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 hover:underline"
-          >
-            Learn more about Vercel environment variables
-          </a>
+        <p className="font-bold">Configuration Error</p>
+        <p className="text-sm mt-1">
+          CDP Project ID is not available. Please check your environment variables.
         </p>
       </div>
     );
@@ -151,8 +106,14 @@ export function FundButton({
   if (error) {
     return (
       <div className="p-4 border rounded-lg bg-red-50 text-red-700">
-        <p className="font-bold">Error:</p>
-        <p>{error}</p>
+        <p className="font-bold">Error</p>
+        <p className="text-sm mt-1">{error}</p>
+        <button
+          onClick={generateFundingUrl}
+          className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -161,7 +122,7 @@ export function FundButton({
     <div className="p-4 border rounded-lg bg-white">
       <h3 className="text-lg font-semibold mb-3">Fund Your Wallet</h3>
       <p className="text-gray-600 mb-4">
-        Add funds to your wallet directly from this app.
+        Add funds to your wallet directly from this app with secure session tokens.
       </p>
 
       <div className="flex flex-col space-y-4">
@@ -171,15 +132,13 @@ export function FundButton({
             hideIcon={hideIcon}
             hideText={hideText}
             openIn={openIn}
-            fundingUrl={customOnrampUrl}
+            fundingUrl={fundingUrl}
           />
         </div>
 
-        {useCustomUrl && (
-          <div className="text-xs text-gray-500 mt-2">
-            Using custom onramp URL with preset amount: ${presetAmount}
-          </div>
-        )}
+        <div className="text-xs text-gray-500 mt-2">
+          🔒 Using secure session tokens | Preset amount: ${presetAmount}
+        </div>
       </div>
     </div>
   );
