@@ -160,11 +160,11 @@ export default function ApplePayFeature() {
             </div>
           </div>
 
-          {/* Apple Pay iframe Display */}
+          {/* Apple Pay Link Display */}
           {paymentLinkUrl && (
             <div className="mt-8 bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 p-8 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Complete Your Purchase</h2>
+                <h2 className="text-2xl font-bold">Apple Pay Order Created!</h2>
                 <button
                   onClick={() => setPaymentLinkUrl(null)}
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
@@ -175,20 +175,39 @@ export default function ApplePayFeature() {
                 </button>
               </div>
               
-              <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-inner border border-gray-200 dark:border-gray-700">
-                <iframe
-                  src={paymentLinkUrl}
-                  className="w-full h-[600px]"
-                  title="Apple Pay Purchase"
-                  allow="payment"
-                  sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
-                />
-              </div>
+              <div className="space-y-4">
+                <div className="p-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
+                    Your Apple Pay order has been created successfully. Click the button below to open the payment page.
+                  </p>
+                  
+                  <button
+                    onClick={() => window.open(paymentLinkUrl, '_blank', 'width=500,height=700')}
+                    className="w-full bg-black dark:bg-white text-white dark:text-black font-semibold py-4 px-6 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <span>Open Apple Pay</span>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </button>
+                </div>
 
-              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
-                <p className="text-sm text-blue-800 dark:text-blue-300">
-                  💡 <strong>Tip:</strong> Click the Apple Pay button in the frame above. On desktop, it will show a QR code to scan with your iPhone.
-                </p>
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                  <p className="text-sm text-blue-800 dark:text-blue-300">
+                    💡 <strong>Tip:</strong> The payment page will open in a new window. On desktop, it will show a QR code to scan with your iPhone. On iOS devices, it will show the Apple Pay button directly.
+                  </p>
+                </div>
+                
+                <div className="text-center">
+                  <a 
+                    href={paymentLinkUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+                  >
+                    Or copy this link: {paymentLinkUrl.substring(0, 60)}...
+                  </a>
+                </div>
               </div>
             </div>
           )}
