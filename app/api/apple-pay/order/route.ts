@@ -173,7 +173,8 @@ export async function POST(request: NextRequest) {
       asset, 
       network, 
       amount,
-      partnerUserRef 
+      partnerUserRef,
+      requestBody: JSON.stringify(requestBody, null, 2) // Log full request for debugging
     });
 
     const response = await fetch(cdpApiUrl, {
