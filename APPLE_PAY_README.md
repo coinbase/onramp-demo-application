@@ -56,7 +56,7 @@ All orders are created with `sandbox-` prefix in `partnerUserRef`, ensuring:
 
 ### POST `/api/apple-pay/order`
 
-Creates an Apple Pay onramp order.
+Creates an Apple Pay onramp order via CDP v2 Order API.
 
 **Request Body:**
 ```json
@@ -70,11 +70,19 @@ Creates an Apple Pay onramp order.
 }
 ```
 
+**Backend automatically adds:**
+- `agreementAcceptedAt`: Current timestamp (assumes user accepted terms)
+- `phoneNumberVerifiedAt`: Current timestamp (for sandbox testing)
+- `paymentMethod`: "GUEST_CHECKOUT_APPLE_PAY"
+- `partnerUserRef`: "sandbox-{email}-{timestamp}" for testing
+- `clientIp`: User's IP address
+- `domain`: Request origin for iframe embedding
+
 **Response:**
 ```json
 {
-  "orderId": "order_xyz",
-  "paymentLinkUrl": "https://pay.coinbase.com/...",
+  "orderId": "123e4567-e89b-12d3-a456-426614174000",
+  "paymentLinkUrl": "https://pay.coinbase.com/v2/api-onramp/apple-pay?sessionToken=...",
   "partnerUserRef": "sandbox-user-1234567890"
 }
 ```
@@ -90,7 +98,12 @@ Creates an Apple Pay onramp order.
 - Phone number must be verified via OTP
 - Phone must be real cell phone (not VoIP)
 - Phone verification required every 60 days
-- Users must accept Coinbase Terms of Service
+- **Users must accept Coinbase legal agreements:**
+  - [Guest Checkout Terms of Service](https://www.coinbase.com/legal/guest-checkout/us)
+  - [User Agreement](https://www.coinbase.com/legal/user_agreement)
+  - [Privacy Policy](https://www.coinbase.com/legal/privacy)
+- You must display these terms and get user acceptance **before** calling the API
+- The `agreementAcceptedAt` timestamp must be when the user accepted the terms
 
 ### Platform Requirements
 - US users only
