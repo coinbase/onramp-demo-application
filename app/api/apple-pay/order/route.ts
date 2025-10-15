@@ -8,8 +8,8 @@ import { rateLimit } from '../../../utils/rateLimit';
  */
 async function generateJWTForV2(keyName: string, keySecret: string): Promise<string> {
   const requestMethod = 'POST';
-  const requestHost = 'api.developer.coinbase.com';
-  const requestPath = '/onramp/v2/orders';
+  const requestHost = 'api.cdp.coinbase.com';
+  const requestPath = '/platform/v2/onramp/orders';
   
   try {
     // Process the private key to ensure it has proper newlines
@@ -94,25 +94,36 @@ export async function POST(request: NextRequest) {
     }
 
     // Call Coinbase v2 Order API
-    const cdpApiUrl = 'https://api.developer.coinbase.com/onramp/v2/orders';
+    const cdpApiUrl = 'https://api.cdp.coinbase.com/platform/v2/onramp/orders';
     
     // Use sandbox prefix for testing (no real charges)
     const partnerUserRef = `sandbox-${email.split('@')[0]}-${Date.now()}`;
+    
+    // Get current timestamp for agreements
+    const currentTimestamp = new Date().toISOString();
+    
+    // Extract client IP (optional but recommended)
+    const clientIp = 
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      request.ip ||
+      '127.0.0.1';
     
     const requestBody = {
       partnerUserRef: partnerUserRef,
       email: email,
       phoneNumber: phoneNumber,
-      quoteRequest: {
-        fiatAmount: amount.toString(),
-        fiatCurrency: 'USD',
-        cryptoCurrency: asset,
-        network: network,
-      },
-      destinationAddress: {
-        address: destinationAddress,
-        network: network,
-      },
+      paymentAmount: amount.toString(),
+      paymentCurrency: 'USD',
+      purchaseCurrency: asset,
+      paymentMethod: 'GUEST_CHECKOUT_APPLE_PAY',
+      destinationAddress: destinationAddress,
+      destinationNetwork: network,
+      agreementAcceptedAt: currentTimestamp,
+      phoneNumberVerifiedAt: currentTimestamp,
+      clientIp: clientIp,
+      // Domain required for iframe embedding
+      domain: request.headers.get('origin') || 'localhost:3000',
     };
 
     logger.info('Creating Apple Pay order', { 
@@ -162,13 +173,13 @@ export async function POST(request: NextRequest) {
 
     const data = JSON.parse(responseText);
     logger.info('Apple Pay order created successfully', { 
-      orderId: data.id,
+      orderId: data.order?.orderId,
       partnerUserRef 
     });
 
     return NextResponse.json({
-      orderId: data.id,
-      paymentLinkUrl: data.paymentLinkUrl,
+      orderId: data.order?.orderId,
+      paymentLinkUrl: data.paymentLink?.url,
       partnerUserRef: partnerUserRef,
     });
   } catch (error) {
