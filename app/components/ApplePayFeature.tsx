@@ -132,8 +132,9 @@ export default function ApplePayFeature() {
             <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-2">
               <li>✓ Fastest onramp experience available</li>
               <li>✓ US users only (valid US phone number required)</li>
-              <li>✓ Scan QR code with iPhone to complete purchase</li>
+              <li>✓ Apple Pay button embedded directly in iframe</li>
               <li>✓ Sandbox mode enabled for testing (no charges)</li>
+              <li>✓ Localhost testing enabled with useApplePaySandbox=true</li>
             </ul>
           </div>
 

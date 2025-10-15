@@ -112,6 +112,8 @@ Creates an Apple Pay onramp order via CDP v2 Order API.
 
 ## Testing
 
+### Local Development (localhost)
+
 1. Navigate to `/apple-pay` page
 2. Connect your wallet
 3. Click "Add Funds with Apple Pay"
@@ -122,11 +124,20 @@ Creates an Apple Pay onramp order via CDP v2 Order API.
    - Asset: `USDC`
    - Network: `base`
 5. Click "Buy with Apple Pay"
-6. **Iframe loads** with Apple Pay button
-7. Click the Apple Pay button in the iframe:
-   - **On iPhone**: Proceeds directly to Apple Pay
-   - **On desktop**: Shows QR code to scan with iPhone Camera app
-8. Complete Apple Pay flow on your iPhone
+6. **Iframe loads** with `useApplePaySandbox=true` query param (auto-added for localhost)
+7. The Apple Pay button appears in the embedded iframe
+8. Click the Apple Pay button to see the QR code (on desktop) or Apple Pay sheet (on iOS)
+9. Complete Apple Pay flow
+
+**Note:** Localhost will never work with real Apple Pay. The code automatically appends `useApplePaySandbox=true` to the payment URL for local iframe testing.
+
+### Production
+
+For production deployments:
+1. Ensure your domain is in the Domain allowlist (CDP Portal → Payments)
+2. The `domain` parameter will be automatically included in API requests
+3. No `useApplePaySandbox=true` param is added
+4. Real Apple Pay integration works with allowlisted domains
 
 ## Security Considerations
 
