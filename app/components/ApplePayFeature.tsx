@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
-import { QRCodeSVG } from "qrcode.react";
 
 interface ApplePayOrder {
   paymentLinkUrl: string;
@@ -21,7 +20,6 @@ export default function ApplePayFeature() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null);
-  const [showQRModal, setShowQRModal] = useState(false);
 
   // Update destination address when wallet connects
   useEffect(() => {
@@ -78,7 +76,6 @@ export default function ApplePayFeature() {
       const data: ApplePayOrder = await response.json();
       setPaymentLinkUrl(data.paymentLinkUrl);
       setShowModal(false);
-      setShowQRModal(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -162,6 +159,39 @@ export default function ApplePayFeature() {
               )}
             </div>
           </div>
+
+          {/* Apple Pay iframe Display */}
+          {paymentLinkUrl && (
+            <div className="mt-8 bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 p-8 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">Complete Your Purchase</h2>
+                <button
+                  onClick={() => setPaymentLinkUrl(null)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-inner border border-gray-200 dark:border-gray-700">
+                <iframe
+                  src={paymentLinkUrl}
+                  className="w-full h-[600px]"
+                  title="Apple Pay Purchase"
+                  allow="payment"
+                  sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
+                />
+              </div>
+
+              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                <p className="text-sm text-blue-800 dark:text-blue-300">
+                  💡 <strong>Tip:</strong> Click the Apple Pay button in the frame above. On desktop, it will show a QR code to scan with your iPhone.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -284,46 +314,6 @@ export default function ApplePayFeature() {
                 >
                   {isLoading ? "Creating Order..." : "Buy with Apple Pay"}
                 </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* QR Code Modal */}
-      {showQRModal && paymentLinkUrl && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-8">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">Scan Code with iPhone</h2>
-              <button
-                onClick={() => setShowQRModal(false)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="flex flex-col items-center">
-              <div className="bg-white p-6 rounded-2xl shadow-lg mb-6">
-                <QRCodeSVG value={paymentLinkUrl} size={256} level="H" />
-              </div>
-              
-              <p className="text-center text-gray-600 dark:text-gray-400 mb-4">
-                Use the Camera app to continue your Apple Pay purchase on your iPhone. Requires iOS 18 or later.
-              </p>
-
-              <button
-                onClick={() => window.open(paymentLinkUrl, '_blank')}
-                className="text-blue-600 dark:text-blue-400 hover:underline text-sm mb-4"
-              >
-                Or open link directly
-              </button>
-
-              <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                Copyright © 2025 Apple Inc. All rights reserved.
               </div>
             </div>
           </div>

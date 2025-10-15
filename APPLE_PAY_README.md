@@ -6,7 +6,8 @@ This demo application now includes Apple Pay onramp integration, providing the f
 
 - 🍎 **Native Apple Pay Experience** - Complete purchases without leaving your app
 - 🔒 **Sandbox Mode** - Test without real charges using `sandbox-` prefix
-- 📱 **QR Code Generation** - Easy mobile access via QR code scanning
+- 📱 **Iframe Integration** - Apple Pay button and QR code displayed via Coinbase iframe
+- 📲 **Built-in QR Code** - QR code provided directly from Coinbase API when clicked on desktop
 - ✅ **US Only** - Currently supports US users with valid US phone numbers
 - ⚡ **Fast Setup** - Simple configuration with CDP API keys
 
@@ -22,8 +23,8 @@ This demo application now includes Apple Pay onramp integration, providing the f
 ### Installation
 
 The required dependencies are already included:
-- `qrcode.react` - QR code generation
 - `@coinbase/cdp-sdk` - CDP authentication
+- No additional packages needed!
 
 ## How It Works
 
@@ -36,9 +37,11 @@ The required dependencies are already included:
    - Phone number (US format: +1XXXXXXXXXX)
    - Destination address (auto-filled from wallet)
    - Amount, asset, and network
-4. **System generates order** via CDP v2 Order API
-5. **QR code displays** with payment link
-6. **User scans QR code** with iPhone Camera app
+4. **System generates order** via CDP v2 Order API and receives `paymentLinkUrl`
+5. **Iframe loads** the payment link showing the Apple Pay button from Coinbase
+6. **User clicks Apple Pay button** in the iframe:
+   - On iPhone: Opens Apple Pay directly
+   - On desktop: Shows QR code from Coinbase to scan with iPhone
 7. **Apple Pay completes** purchase on device
 
 ### Sandbox Mode
@@ -106,8 +109,11 @@ Creates an Apple Pay onramp order.
    - Asset: `USDC`
    - Network: `base`
 5. Click "Buy with Apple Pay"
-6. Scan the QR code with iPhone or open link directly
-7. Complete Apple Pay flow
+6. **Iframe loads** with Apple Pay button
+7. Click the Apple Pay button in the iframe:
+   - **On iPhone**: Proceeds directly to Apple Pay
+   - **On desktop**: Shows QR code to scan with iPhone Camera app
+8. Complete Apple Pay flow on your iPhone
 
 ## Security Considerations
 
@@ -153,10 +159,20 @@ app/
 - Verify network connectivity
 - Check server logs for detailed error messages
 
+### Iframe not loading
+- Check that the `paymentLinkUrl` is valid
+- Ensure iframe sandbox permissions are correct
+- Check browser console for errors
+
+### Apple Pay button not showing
+- The button is rendered by Coinbase's iframe
+- May require iOS/Safari for full functionality
+- On desktop, click the button to see QR code
+
 ### QR code not working
+- The QR code is provided by Coinbase when you click the Apple Pay button on desktop
 - Ensure you're scanning with iPhone Camera app
 - Requires iOS 18 or later
-- Try opening the link directly instead
 
 ## Documentation
 
