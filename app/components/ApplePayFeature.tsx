@@ -126,8 +126,10 @@ export default function ApplePayFeature() {
       setIframeUrl(iframeSandboxUrl); // For iframe
       setShowModal(false);
       setEventLogs([
-        `[${new Date().toLocaleTimeString()}] Popup URL: ${originalUrl}`,
-        `[${new Date().toLocaleTimeString()}] Iframe URL: ${iframeSandboxUrl}`
+        `[${new Date().toLocaleTimeString()}] Order created successfully`,
+        `[${new Date().toLocaleTimeString()}] Popup URL (original): ${originalUrl}`,
+        `[${new Date().toLocaleTimeString()}] Iframe URL (with sandbox): ${iframeSandboxUrl}`,
+        `[${new Date().toLocaleTimeString()}] If popup is blank, check browser console for errors`
       ]); // Show both URLs
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
