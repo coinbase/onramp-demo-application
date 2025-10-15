@@ -159,14 +159,13 @@ export async function POST(request: NextRequest) {
       clientIp: clientIp,
     };
     
-    // Domain is only required for iframe embedding in production
-    // For local testing, omit domain to avoid allowlist errors
-    // When deploying to production, your domain must be allowlisted by Coinbase
-    if (origin && !origin.includes('localhost') && !origin.includes('127.0.0.1')) {
+    // Domain is required for iframe embedding
+    // Make sure your domain is allowlisted in CDP Portal > Payments > Domain allowlist
+    if (origin) {
       requestBody.domain = origin;
       logger.debug('Including domain in request', { domain: origin });
     } else {
-      logger.debug('Omitting domain for local testing', { origin });
+      logger.debug('No origin header, omitting domain', { origin });
     }
 
     logger.info('Creating Apple Pay order', { 

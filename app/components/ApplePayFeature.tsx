@@ -20,6 +20,7 @@ export default function ApplePayFeature() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null);
+  const [eventLogs, setEventLogs] = useState<string[]>([]);
 
   // Update destination address when wallet connects
   useEffect(() => {
@@ -27,6 +28,34 @@ export default function ApplePayFeature() {
       setDestinationAddress(address);
     }
   }, [address]);
+
+  // Listen for post message events from the iframe
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Only accept messages from Coinbase
+      if (!event.origin.includes('coinbase.com')) return;
+
+      const { eventName, data } = event.data;
+      
+      const timestamp = new Date().toLocaleTimeString();
+      const logMessage = `[${timestamp}] ${eventName}${data?.errorMessage ? ` - ${data.errorMessage}` : ''}${data?.errorCode ? ` (${data.errorCode})` : ''}`;
+      
+      setEventLogs(prev => [...prev, logMessage]);
+
+      // Handle specific events
+      if (eventName === 'onramp_api.load_error' || eventName === 'onramp_api.commit_error' || eventName === 'onramp_api.polling_error') {
+        setError(data?.errorMessage || 'An error occurred');
+      } else if (eventName === 'onramp_api.commit_success') {
+        setError(null);
+      } else if (eventName === 'onramp_api.polling_success') {
+        setError(null);
+        alert('Transaction completed successfully! 🎉');
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   const handleAddFunds = () => {
     if (!isConnected) {
@@ -76,11 +105,7 @@ export default function ApplePayFeature() {
       const data: ApplePayOrder = await response.json();
       setPaymentLinkUrl(data.paymentLinkUrl);
       setShowModal(false);
-      
-      // For local testing, automatically open in popup since iframe won't work without domain allowlisting
-      if (window.location.hostname === 'localhost') {
-        window.open(data.paymentLinkUrl, '_blank', 'width=500,height=700');
-      }
+      setEventLogs([]); // Clear previous event logs
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -165,61 +190,58 @@ export default function ApplePayFeature() {
             </div>
           </div>
 
-          {/* Apple Pay Success Display */}
+          {/* Apple Pay iframe Display */}
           {paymentLinkUrl && (
-            <div className="mt-8 bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 p-8 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">✓ Order Created Successfully!</h2>
-                <button
-                  onClick={() => setPaymentLinkUrl(null)}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="p-6 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-700">
-                  <p className="text-green-800 dark:text-green-300 mb-4">
-                    🎉 Your Apple Pay order has been created! The payment window should open automatically.
-                  </p>
-                  
+            <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Main iframe - takes 2 columns */}
+              <div className="lg:col-span-2 bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 p-8 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold">Complete Your Purchase</h2>
                   <button
-                    onClick={() => window.open(paymentLinkUrl, '_blank', 'width=500,height=700')}
-                    className="w-full bg-black dark:bg-white text-white dark:text-black font-semibold py-4 px-6 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors flex items-center justify-center space-x-2"
+                    onClick={() => setPaymentLinkUrl(null)}
+                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                   >
-                    <span>Open Apple Pay Window</span>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 </div>
-
-                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
-                  <p className="text-sm text-blue-800 dark:text-blue-300">
-                    💡 <strong>In the payment window:</strong>
-                  </p>
-                  <ul className="text-sm text-blue-700 dark:text-blue-300 mt-2 space-y-1 list-disc list-inside">
-                    <li>On desktop: You'll see a QR code to scan with your iPhone</li>
-                    <li>On iOS: You'll see the Apple Pay button to tap directly</li>
-                    <li>Sandbox mode: Transaction will succeed without charging</li>
-                  </ul>
-                </div>
                 
-                <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                    <strong>Note:</strong> For iframe embedding in production, your domain must be allowlisted by Coinbase.
+                <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-inner border border-gray-200 dark:border-gray-700">
+                  <iframe
+                    src={paymentLinkUrl}
+                    className="w-full h-[500px] border-0"
+                    title="Apple Pay Purchase"
+                    allow="payment"
+                  />
+                </div>
+
+                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                  <p className="text-sm text-blue-800 dark:text-blue-300">
+                    💡 <strong>Tip:</strong> Click the "Buy with Apple Pay" button above. On desktop, it will show a QR code to scan with your iPhone. On iOS, the Apple Pay sheet will open directly.
                   </p>
-                  <a 
-                    href={paymentLinkUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline break-all"
-                  >
-                    Payment Link: {paymentLinkUrl}
-                  </a>
+                </div>
+              </div>
+
+              {/* Event Log Sidebar */}
+              <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-bold mb-4">Event Log</h3>
+                <div className="bg-black text-green-400 p-4 rounded-lg font-mono text-xs h-[500px] overflow-y-auto">
+                  {eventLogs.length === 0 ? (
+                    <p className="text-gray-500">Waiting for events...</p>
+                  ) : (
+                    eventLogs.map((log, i) => (
+                      <div key={i} className="mb-1 break-words">{log}</div>
+                    ))
+                  )}
+                </div>
+                <div className="mt-4 text-xs text-gray-600 dark:text-gray-400">
+                  <p className="mb-2"><strong>Events to watch for:</strong></p>
+                  <ul className="space-y-1 list-disc list-inside">
+                    <li>onramp_api.load_success</li>
+                    <li>onramp_api.commit_success</li>
+                    <li>onramp_api.polling_success</li>
+                  </ul>
                 </div>
               </div>
             </div>
