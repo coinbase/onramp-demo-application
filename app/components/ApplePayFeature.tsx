@@ -103,7 +103,14 @@ export default function ApplePayFeature() {
       }
 
       const data: ApplePayOrder = await response.json();
-      setPaymentLinkUrl(data.paymentLinkUrl);
+      
+      // For localhost testing, append useApplePaySandbox=true to enable iframe integration
+      let finalUrl = data.paymentLinkUrl;
+      if (window.location.hostname === 'localhost') {
+        finalUrl = `${data.paymentLinkUrl}${data.paymentLinkUrl.includes('?') ? '&' : '?'}useApplePaySandbox=true`;
+      }
+      
+      setPaymentLinkUrl(finalUrl);
       setShowModal(false);
       setEventLogs([]); // Clear previous event logs
     } catch (err) {
