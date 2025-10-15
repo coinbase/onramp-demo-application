@@ -109,7 +109,10 @@ export async function POST(request: NextRequest) {
       request.ip ||
       '127.0.0.1';
     
-    const requestBody = {
+    // Get origin for domain parameter (only if it's a proper URL)
+    const origin = request.headers.get('origin');
+    
+    const requestBody: any = {
       partnerUserRef: partnerUserRef,
       email: email,
       phoneNumber: phoneNumber,
@@ -122,9 +125,13 @@ export async function POST(request: NextRequest) {
       agreementAcceptedAt: currentTimestamp,
       phoneNumberVerifiedAt: currentTimestamp,
       clientIp: clientIp,
-      // Domain required for iframe embedding
-      domain: request.headers.get('origin') || 'localhost:3000',
     };
+    
+    // Only include domain if we have a proper origin (for production/deployed environments)
+    // For local development, omit domain parameter
+    if (origin && origin.startsWith('http')) {
+      requestBody.domain = origin;
+    }
 
     logger.info('Creating Apple Pay order', { 
       email, 
