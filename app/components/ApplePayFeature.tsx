@@ -35,7 +35,13 @@ export default function ApplePayFeature() {
       // Only accept messages from Coinbase
       if (!event.origin.includes('coinbase.com')) return;
 
+      // Check if event.data has the expected structure
+      if (!event.data || typeof event.data !== 'object') return;
+      
       const { eventName, data } = event.data;
+      
+      // Skip if no eventName
+      if (!eventName) return;
       
       const timestamp = new Date().toLocaleTimeString();
       const logMessage = `[${timestamp}] ${eventName}${data?.errorMessage ? ` - ${data.errorMessage}` : ''}${data?.errorCode ? ` (${data.errorCode})` : ''}`;
