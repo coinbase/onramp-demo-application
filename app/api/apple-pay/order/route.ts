@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
       request.ip ||
       '127.0.0.1';
     
-    // Get origin for domain parameter (only if it's a proper URL)
+    // Get origin for domain parameter
     const origin = request.headers.get('origin');
     
     const requestBody: any = {
@@ -127,10 +127,13 @@ export async function POST(request: NextRequest) {
       clientIp: clientIp,
     };
     
-    // Only include domain if we have a proper origin (for production/deployed environments)
-    // For local development, omit domain parameter
-    if (origin && origin.startsWith('http')) {
+    // Only include domain for production environments (not localhost)
+    // The domain must be allowlisted with Coinbase for Apple Pay web app
+    if (origin && !origin.includes('localhost') && !origin.includes('127.0.0.1')) {
       requestBody.domain = origin;
+      logger.debug('Including domain in request', { domain: origin });
+    } else {
+      logger.debug('Omitting domain for local development', { origin });
     }
 
     logger.info('Creating Apple Pay order', { 
