@@ -102,12 +102,44 @@ export async function POST(request: NextRequest) {
     // Get current timestamp for agreements
     const currentTimestamp = new Date().toISOString();
     
-    // Extract client IP (optional but recommended)
-    const clientIp = 
+    // Extract client IP (required by CDP API)
+    // NOTE: CDP API does NOT accept private IP addresses (127.0.0.1, 10.x.x.x, 192.168.x.x, etc.)
+    // For local development, we use a public test IP address
+    // In production, extract the real client IP from the network layer
+    let clientIp = 
       request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
       request.headers.get('x-real-ip') ||
-      request.ip ||
-      '127.0.0.1';
+      request.ip;
+    
+    // Check if IP is private or localhost and use a public test IP for development
+    const isPrivateIp = !clientIp || 
+      clientIp === '127.0.0.1' || 
+      clientIp === 'localhost' ||
+      clientIp === '::1' ||
+      clientIp.startsWith('10.') || 
+      clientIp.startsWith('192.168.') ||
+      clientIp.startsWith('172.16.') ||
+      clientIp.startsWith('172.17.') ||
+      clientIp.startsWith('172.18.') ||
+      clientIp.startsWith('172.19.') ||
+      clientIp.startsWith('172.20.') ||
+      clientIp.startsWith('172.21.') ||
+      clientIp.startsWith('172.22.') ||
+      clientIp.startsWith('172.23.') ||
+      clientIp.startsWith('172.24.') ||
+      clientIp.startsWith('172.25.') ||
+      clientIp.startsWith('172.26.') ||
+      clientIp.startsWith('172.27.') ||
+      clientIp.startsWith('172.28.') ||
+      clientIp.startsWith('172.29.') ||
+      clientIp.startsWith('172.30.') ||
+      clientIp.startsWith('172.31.');
+    
+    if (isPrivateIp) {
+      // Use a valid public test IP for development (example IP from documentation RFC 5737)
+      clientIp = '192.0.2.1';
+      logger.debug('Using test public IP for development', { originalIp: request.ip });
+    }
     
     // Get origin for domain parameter
     const origin = request.headers.get('origin');
