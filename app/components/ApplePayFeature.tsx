@@ -20,6 +20,7 @@ export default function ApplePayFeature() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null);
+  const [iframeUrl, setIframeUrl] = useState<string | null>(null);
   const [eventLogs, setEventLogs] = useState<string[]>([]);
 
   // Update destination address when wallet connects
@@ -110,17 +111,24 @@ export default function ApplePayFeature() {
 
       const data: ApplePayOrder = await response.json();
       
-      // For localhost testing, append useApplePaySandbox=true to enable iframe integration
-      let finalUrl = data.paymentLinkUrl;
+      // Original URL for popup (no sandbox param)
+      const originalUrl = data.paymentLinkUrl;
+      
+      // For localhost iframe, append useApplePaySandbox=true
+      let iframeSandboxUrl = originalUrl;
       if (window.location.hostname === 'localhost') {
-        finalUrl = `${data.paymentLinkUrl}${data.paymentLinkUrl.includes('?') ? '&' : '?'}useApplePaySandbox=true`;
-        console.log('Apple Pay URL with sandbox param:', finalUrl);
+        iframeSandboxUrl = `${originalUrl}${originalUrl.includes('?') ? '&' : '?'}useApplePaySandbox=true`;
+        console.log('Iframe URL (with sandbox):', iframeSandboxUrl);
+        console.log('Popup URL (original):', originalUrl);
       }
       
-      setPaymentLinkUrl(finalUrl);
+      setPaymentLinkUrl(originalUrl); // For popup
+      setIframeUrl(iframeSandboxUrl); // For iframe
       setShowModal(false);
-      setEventLogs([`[${new Date().toLocaleTimeString()}] Iframe URL: ${finalUrl}`]); // Show full URL
-      console.log('Full Apple Pay iframe URL:', finalUrl);
+      setEventLogs([
+        `[${new Date().toLocaleTimeString()}] Popup URL: ${originalUrl}`,
+        `[${new Date().toLocaleTimeString()}] Iframe URL: ${iframeSandboxUrl}`
+      ]); // Show both URLs
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -207,30 +215,45 @@ export default function ApplePayFeature() {
           </div>
 
           {/* Apple Pay iframe Display */}
-          {paymentLinkUrl && (
+          {iframeUrl && (
             <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Main iframe - takes 2 columns */}
               <div className="lg:col-span-2 bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 p-8 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold">Complete Your Purchase</h2>
-                  <button
-                    onClick={() => setPaymentLinkUrl(null)}
-                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                
-                <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-inner border border-gray-200 dark:border-gray-700">
-                  <iframe
-                    src={paymentLinkUrl}
-                    className="w-full h-[500px] border-0"
-                    title="Apple Pay Purchase"
-                    allow="payment"
-                  />
-                </div>
+                <h2 className="text-2xl font-bold">Complete Your Purchase</h2>
+                <button
+                  onClick={() => {
+                    setPaymentLinkUrl(null);
+                    setIframeUrl(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-inner border border-gray-200 dark:border-gray-700">
+                <iframe
+                  src={iframeUrl}
+                  className="w-full h-[500px] border-0"
+                  title="Apple Pay Purchase"
+                  allow="payment"
+                  onLoad={() => {
+                    console.log('Iframe loaded successfully');
+                    setEventLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Iframe loaded`]);
+                  }}
+                  onError={(e) => {
+                    console.error('Iframe error:', e);
+                    setEventLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Iframe error occurred`]);
+                  }}
+                />
+              </div>
+              
+              <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono break-all">
+                <strong>Iframe URL:</strong> {iframeUrl}
+              </div>
 
               <div className="mt-4 space-y-3">
                 <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
@@ -245,10 +268,13 @@ export default function ApplePayFeature() {
                     ⚠️ <strong>If iframe is blocked:</strong>
                   </p>
                   <button
-                    onClick={() => window.open(paymentLinkUrl, '_blank', 'width=500,height=700')}
+                    onClick={() => {
+                      console.log('Opening popup with original URL:', paymentLinkUrl);
+                      window.open(paymentLinkUrl, '_blank', 'width=500,height=700');
+                    }}
                     className="text-sm text-yellow-800 dark:text-yellow-300 underline hover:no-underline"
                   >
-                    Click here to open in popup window instead
+                    Click here to open in popup window (without sandbox param)
                   </button>
                 </div>
               </div>
