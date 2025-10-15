@@ -184,10 +184,24 @@ export default function ApplePayFeature() {
                 />
               </div>
 
-              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
-                <p className="text-sm text-blue-800 dark:text-blue-300">
-                  💡 <strong>Tip:</strong> Click the Apple Pay button above. On desktop, it will show a QR code to scan with your iPhone. On iOS devices, it will show the Apple Pay button directly.
-                </p>
+              <div className="mt-4 space-y-3">
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                  <p className="text-sm text-blue-800 dark:text-blue-300">
+                    💡 <strong>Tip:</strong> Click the Apple Pay button above. On desktop, it will show a QR code to scan with your iPhone. On iOS devices, it will show the Apple Pay button directly.
+                  </p>
+                </div>
+                
+                <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-700">
+                  <p className="text-sm text-yellow-800 dark:text-yellow-300 mb-2">
+                    ⚠️ <strong>If iframe is blocked:</strong> Your domain needs to be allowlisted by Coinbase for iframe embedding.
+                  </p>
+                  <button
+                    onClick={() => window.open(paymentLinkUrl, '_blank', 'width=500,height=700')}
+                    className="text-sm text-yellow-800 dark:text-yellow-300 underline hover:no-underline"
+                  >
+                    Click here to open in new window instead
+                  </button>
+                </div>
               </div>
             </div>
           )}

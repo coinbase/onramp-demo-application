@@ -159,13 +159,16 @@ export async function POST(request: NextRequest) {
       clientIp: clientIp,
     };
     
-    // Only include domain for production environments (not localhost)
-    // The domain must be allowlisted with Coinbase for Apple Pay web app
-    if (origin && !origin.includes('localhost') && !origin.includes('127.0.0.1')) {
+    // Domain is REQUIRED for iframe embedding with Apple Pay web app
+    // For localhost, we'll include it and handle the allowlist error gracefully
+    // For production, make sure your domain is allowlisted with Coinbase
+    if (origin) {
       requestBody.domain = origin;
       logger.debug('Including domain in request', { domain: origin });
     } else {
-      logger.debug('Omitting domain for local development', { origin });
+      // Fallback domain
+      requestBody.domain = 'localhost:3000';
+      logger.debug('Using fallback domain for local development');
     }
 
     logger.info('Creating Apple Pay order', { 
