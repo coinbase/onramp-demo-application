@@ -117,18 +117,50 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email, phoneNumber, amount, asset, network, destinationAddress } = body;
 
+    logger.info('Apple Pay order request received', {
+      email,
+      phoneNumber: phoneNumber ? `${phoneNumber.substring(0, 5)}...` : 'missing',
+      amount,
+      asset,
+      network,
+      destinationAddress: destinationAddress ? `${destinationAddress.substring(0, 10)}...` : 'missing'
+    });
+
     // Validate required fields
     if (!email || !phoneNumber || !destinationAddress) {
+      const missingFields = [];
+      if (!email) missingFields.push('email');
+      if (!phoneNumber) missingFields.push('phoneNumber');
+      if (!destinationAddress) missingFields.push('destinationAddress');
+      
+      logger.warn('Missing required fields', { missingFields });
       return NextResponse.json(
-        { error: 'Missing required fields: email, phoneNumber, and destinationAddress are required' },
+        { 
+          error: 'Missing required fields', 
+          details: `Missing: ${missingFields.join(', ')}`,
+          required: ['email', 'phoneNumber', 'destinationAddress']
+        },
         { status: 400, headers: corsHeaders }
       );
     }
 
     // Validate phone number format (US only)
     if (!phoneNumber.match(/^\+1\d{10}$/)) {
+      logger.warn('Invalid phone number format', { phoneNumber: phoneNumber.substring(0, 5) + '...' });
       return NextResponse.json(
-        { error: 'Invalid phone number format. Must be +1XXXXXXXXXX (US only)' },
+        { 
+          error: 'Invalid phone number format. Must be +1XXXXXXXXXX (US only)',
+          example: '+12345678901'
+        },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    // Validate amount
+    if (!amount || isNaN(amount) || amount <= 0) {
+      logger.warn('Invalid amount', { amount });
+      return NextResponse.json(
+        { error: 'Invalid amount. Must be a positive number' },
         { status: 400, headers: corsHeaders }
       );
     }
@@ -149,8 +181,11 @@ export async function POST(request: NextRequest) {
     // Call Coinbase v2 Order API
     const cdpApiUrl = 'https://api.cdp.coinbase.com/platform/v2/onramp/orders';
     
-    // Use sandbox prefix for testing (no real charges)
+    // SANDBOX MODE: Use sandbox prefix for testing (no real charges)
+    // This ensures all transactions are in sandbox mode and no real funds are transferred
+    // Combined with useApplePaySandbox=true on the frontend, this provides full sandbox testing
     const partnerUserRef = `sandbox-${email.split('@')[0]}-${Date.now()}`;
+    logger.info('Using sandbox mode', { partnerUserRef });
     
     // Get current timestamp for agreements
     const currentTimestamp = new Date().toISOString();
@@ -212,14 +247,16 @@ export async function POST(request: NextRequest) {
       clientIp: clientIp,
     };
     
-    // Domain is required for iframe embedding in production
-    // For localhost: use useApplePaySandbox=true query param instead of domain
-    // Make sure your production domain is allowlisted in CDP Portal > Payments > Domain allowlist
+    // IMPORTANT: Domain parameter handling for sandbox mode
+    // For sandbox testing (with useApplePaySandbox=true on frontend):
+    // - We must OMIT the domain parameter entirely for localhost
+    // - The frontend appends useApplePaySandbox=true which bypasses domain checks
+    // - For production domains, include the domain (must be allowlisted in CDP Portal)
     if (origin && !origin.includes('localhost') && !origin.includes('127.0.0.1')) {
       requestBody.domain = origin;
-      logger.debug('Including domain in request', { domain: origin });
+      logger.info('Including domain for production', { domain: origin });
     } else {
-      logger.debug('Omitting domain for localhost (will use useApplePaySandbox=true)', { origin });
+      logger.info('Omitting domain for localhost - sandbox mode will use useApplePaySandbox=true', { origin });
     }
 
     logger.info('Creating Apple Pay order', { 
@@ -250,20 +287,31 @@ export async function POST(request: NextRequest) {
         response: responseText
       });
 
-      // In development, return more details
-      if (process.env.NODE_ENV === 'development') {
-        return NextResponse.json(
-          {
-            error: 'Failed to create Apple Pay order',
-            details: responseText,
-            status: response.status
-          },
-          { status: response.status, headers: corsHeaders }
-        );
+      let errorDetails = 'Failed to create Apple Pay order';
+      try {
+        const errorData = JSON.parse(responseText);
+        if (errorData.errorMessage) {
+          errorDetails = errorData.errorMessage;
+        }
+      } catch (e) {
+        // If response is not JSON, use raw text
+        errorDetails = responseText || 'Unknown error from CDP API';
       }
 
+      // In development or if explicitly requested, return more details
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      
       return NextResponse.json(
-        { error: 'Failed to create Apple Pay order' },
+        {
+          error: errorDetails,
+          status: response.status,
+          ...(isDevelopment && { 
+            debug: {
+              statusText: response.statusText,
+              rawResponse: responseText
+            }
+          })
+        },
         { status: response.status, headers: corsHeaders }
       );
     }
