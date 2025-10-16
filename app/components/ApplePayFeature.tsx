@@ -11,6 +11,7 @@ interface ApplePayOrder {
 export default function ApplePayFeature() {
   const { address, isConnected } = useAccount();
   const [showModal, setShowModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [amount, setAmount] = useState("20");
@@ -125,12 +126,11 @@ export default function ApplePayFeature() {
       setPaymentLinkUrl(originalUrl); // For popup
       setIframeUrl(iframeSandboxUrl); // For iframe
       setShowModal(false);
+      setShowPaymentModal(true); // Open payment modal
       setEventLogs([
         `[${new Date().toLocaleTimeString()}] Order created successfully`,
-        `[${new Date().toLocaleTimeString()}] Popup URL (original): ${originalUrl}`,
-        `[${new Date().toLocaleTimeString()}] Iframe URL (with sandbox): ${iframeSandboxUrl}`,
-        `[${new Date().toLocaleTimeString()}] If popup is blank, check browser console for errors`
-      ]); // Show both URLs
+        `[${new Date().toLocaleTimeString()}] Loading Apple Pay button...`
+      ]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -216,93 +216,76 @@ export default function ApplePayFeature() {
             </div>
           </div>
 
-          {/* Apple Pay iframe Display */}
-          {iframeUrl && (
-            <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Main iframe - takes 2 columns */}
-              <div className="lg:col-span-2 bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 p-8 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
-                <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Complete Your Purchase</h2>
-                <button
-                  onClick={() => {
-                    setPaymentLinkUrl(null);
-                    setIframeUrl(null);
-                  }}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              
-              <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-inner border border-gray-200 dark:border-gray-700">
-                <iframe
-                  src={iframeUrl}
-                  className="w-full h-[500px] border-0"
-                  title="Apple Pay Purchase"
-                  allow="payment"
-                  onLoad={() => {
-                    console.log('Iframe loaded successfully');
-                    setEventLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Iframe loaded`]);
-                  }}
-                  onError={(e) => {
-                    console.error('Iframe error:', e);
-                    setEventLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Iframe error occurred`]);
-                  }}
-                />
-              </div>
-              
-              <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono break-all">
-                <strong>Iframe URL:</strong> {iframeUrl}
-              </div>
+          {/* Payment Modal - Porto Style */}
+          {showPaymentModal && iframeUrl && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+                <div className="p-6">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold">Add funds</h2>
+                    <button
+                      onClick={() => {
+                        setShowPaymentModal(false);
+                        setPaymentLinkUrl(null);
+                        setIframeUrl(null);
+                      }}
+                      className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
 
-              <div className="mt-4 space-y-3">
-                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
-                  <p className="text-sm text-blue-800 dark:text-blue-300">
-                    💡 <strong>Tip:</strong> Click the "Buy with Apple Pay" button above. On desktop, it will show a QR code to scan with your iPhone. On iOS, the Apple Pay sheet will open directly.
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    Select deposit method
                   </p>
-                </div>
-                
-                {/* Fallback if iframe is blocked */}
-                <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-700">
-                  <p className="text-sm text-yellow-800 dark:text-yellow-300 mb-2">
-                    ⚠️ <strong>If iframe is blocked:</strong>
-                  </p>
+
+                  {/* Apple Pay iframe */}
+                  <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mb-4">
+                    <iframe
+                      src={iframeUrl}
+                      className="w-full h-[400px] border-0"
+                      title="Apple Pay Purchase"
+                      allow="payment"
+                      onLoad={() => {
+                        console.log('Iframe loaded successfully');
+                        setEventLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Apple Pay button ready`]);
+                      }}
+                      onError={(e) => {
+                        console.error('Iframe error:', e);
+                        setEventLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Error loading iframe`]);
+                      }}
+                    />
+                  </div>
+
+                  {/* Event log - compact version */}
+                  {eventLogs.length > 0 && (
+                    <div className="mb-4">
+                      <details className="text-xs">
+                        <summary className="cursor-pointer text-gray-600 dark:text-gray-400 mb-2">
+                          Event Log ({eventLogs.length})
+                        </summary>
+                        <div className="bg-black text-green-400 p-3 rounded font-mono text-xs max-h-32 overflow-y-auto">
+                          {eventLogs.map((log, i) => (
+                            <div key={i} className="mb-1 break-words">{log}</div>
+                          ))}
+                        </div>
+                      </details>
+                    </div>
+                  )}
+
+                  {/* Back button */}
                   <button
                     onClick={() => {
-                      if (paymentLinkUrl) {
-                        console.log('Opening popup with original URL:', paymentLinkUrl);
-                        window.open(paymentLinkUrl, '_blank', 'width=500,height=700');
-                      }
+                      setShowPaymentModal(false);
+                      setPaymentLinkUrl(null);
+                      setIframeUrl(null);
                     }}
-                    className="text-sm text-yellow-800 dark:text-yellow-300 underline hover:no-underline"
+                    className="w-full text-center py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
                   >
-                    Click here to open in popup window (without sandbox param)
+                    Back
                   </button>
-                </div>
-              </div>
-              </div>
-
-              {/* Event Log Sidebar */}
-              <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
-                <h3 className="text-lg font-bold mb-4">Event Log</h3>
-                <div className="bg-black text-green-400 p-4 rounded-lg font-mono text-xs h-[500px] overflow-y-auto">
-                  {eventLogs.length === 0 ? (
-                    <p className="text-gray-500">Waiting for events...</p>
-                  ) : (
-                    eventLogs.map((log, i) => (
-                      <div key={i} className="mb-1 break-words">{log}</div>
-                    ))
-                  )}
-                </div>
-                <div className="mt-4 text-xs text-gray-600 dark:text-gray-400">
-                  <p className="mb-2"><strong>Events to watch for:</strong></p>
-                  <ul className="space-y-1 list-disc list-inside">
-                    <li>onramp_api.load_success</li>
-                    <li>onramp_api.commit_success</li>
-                    <li>onramp_api.polling_success</li>
-                  </ul>
                 </div>
               </div>
             </div>
