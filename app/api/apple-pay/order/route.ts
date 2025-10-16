@@ -3,6 +3,45 @@ import { generateJwt } from '@coinbase/cdp-sdk/auth';
 import { logger } from '../../../utils/logger';
 import { rateLimit } from '../../../utils/rateLimit';
 
+// ✅ CORS Configuration - Allow requests from approved domains
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  // Production domains
+  'https://onramp-demo-application-git-main-coinbase-vercel.vercel.app',
+  'https://onramp-demo-application.vercel.app',
+  'https://www.onrampdemo.com',
+];
+
+function setCorsHeaders(origin: string | null): Record<string, string> {
+  // Check if origin is allowed
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    return {
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Max-Age': '86400', // 24 hours
+    };
+  }
+  return {};
+}
+
+// Handle preflight OPTIONS requests
+export async function OPTIONS(request: NextRequest) {
+  const origin = request.headers.get('origin');
+  const corsHeaders = setCorsHeaders(origin);
+  
+  if (Object.keys(corsHeaders).length === 0) {
+    logger.warn('CORS: Rejected preflight from unauthorized origin', { origin });
+    return new NextResponse(null, { status: 403 });
+  }
+  
+  return new NextResponse(null, {
+    status: 204,
+    headers: corsHeaders,
+  });
+}
+
 /**
  * Generates a JWT token for CDP API v2 authentication
  */
@@ -36,6 +75,18 @@ async function generateJWTForV2(keyName: string, keySecret: string): Promise<str
 }
 
 export async function POST(request: NextRequest) {
+  const origin = request.headers.get('origin');
+  const corsHeaders = setCorsHeaders(origin);
+  
+  // ✅ CORS Protection - Reject requests from unauthorized origins
+  if (origin && Object.keys(corsHeaders).length === 0) {
+    logger.warn('CORS: Rejected request from unauthorized origin', { origin });
+    return NextResponse.json(
+      { error: 'Unauthorized origin' },
+      { status: 403 }
+    );
+  }
+
   try {
     // Apply rate limiting (10 requests per minute)
     const rateLimitResult = rateLimit(request, { limit: 10, windowMs: 60000 });
@@ -44,7 +95,7 @@ export async function POST(request: NextRequest) {
       const retryAfter = Math.ceil((rateLimitResult.resetTime! - Date.now()) / 1000);
       return NextResponse.json(
         { error: 'Too many requests. Please try again later.' },
-        { status: 429 }
+        { status: 429, headers: corsHeaders }
       );
     }
 
@@ -56,7 +107,7 @@ export async function POST(request: NextRequest) {
       logger.error('Missing CDP API credentials');
       return NextResponse.json(
         { error: 'Server configuration error' },
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -68,7 +119,7 @@ export async function POST(request: NextRequest) {
     if (!email || !phoneNumber || !destinationAddress) {
       return NextResponse.json(
         { error: 'Missing required fields: email, phoneNumber, and destinationAddress are required' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -76,7 +127,7 @@ export async function POST(request: NextRequest) {
     if (!phoneNumber.match(/^\+1\d{10}$/)) {
       return NextResponse.json(
         { error: 'Invalid phone number format. Must be +1XXXXXXXXXX (US only)' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -89,7 +140,7 @@ export async function POST(request: NextRequest) {
       logger.error('JWT generation failed', { error });
       return NextResponse.json(
         { error: 'Authentication failed' },
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -205,13 +256,13 @@ export async function POST(request: NextRequest) {
             details: responseText,
             status: response.status
           },
-          { status: response.status }
+          { status: response.status, headers: corsHeaders }
         );
       }
 
       return NextResponse.json(
         { error: 'Failed to create Apple Pay order' },
-        { status: response.status }
+        { status: response.status, headers: corsHeaders }
       );
     }
 
@@ -225,12 +276,12 @@ export async function POST(request: NextRequest) {
       orderId: data.order?.orderId,
       paymentLinkUrl: data.paymentLink?.url,
       partnerUserRef: partnerUserRef,
-    });
+    }, { headers: corsHeaders });
   } catch (error) {
     logger.error('Error creating Apple Pay order', { error });
     return NextResponse.json(
       { error: 'Failed to create order' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
