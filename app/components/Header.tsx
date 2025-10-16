@@ -69,6 +69,13 @@ export function Header() {
               Offramp
             </NavLink>
             <NavLink
+              href="/apple-pay"
+              isActive={pathname === "/apple-pay"}
+              isScrolled={isScrolled}
+            >
+              Apple Pay
+            </NavLink>
+            <NavLink
               href="/fund"
               isActive={pathname === "/fund"}
               isScrolled={isScrolled}
@@ -152,6 +159,13 @@ export function Header() {
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Offramp
+            </MobileNavLink>
+            <MobileNavLink
+              href="/apple-pay"
+              isActive={pathname === "/apple-pay"}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Apple Pay
             </MobileNavLink>
             <MobileNavLink
               href="/fund"

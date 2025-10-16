@@ -48,7 +48,7 @@ export default function Hero() {
               The seamless bridge between fiat and crypto for your applications
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-16">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
               <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-md hover:shadow-lg transition-all border border-gray-100 dark:border-gray-700 flex flex-col h-full">
                 <div className="flex-grow">
                   <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">
@@ -85,6 +85,28 @@ export default function Hero() {
                     className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium inline-flex items-center border border-blue-300 dark:border-blue-600 rounded-lg px-4 py-2 transition-all hover:bg-blue-50 dark:hover:bg-blue-900/20"
                   >
                     Explore Offramp <span className="ml-2">→</span>
+                  </Link>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-6 shadow-md hover:shadow-lg transition-all border-2 border-blue-200 dark:border-blue-700 flex flex-col h-full">
+                <div className="flex-grow">
+                  <div className="inline-block px-2 py-1 bg-blue-600 text-white text-xs font-bold rounded mb-2">
+                    NEW
+                  </div>
+                  <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">
+                    Apple Pay 🍎
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-300">
+                    The fastest onramp experience. Complete purchases without leaving your app using Apple Pay.
+                  </p>
+                </div>
+                <div className="mt-6">
+                  <Link
+                    href="/apple-pay"
+                    className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium inline-flex items-center border border-blue-300 dark:border-blue-600 rounded-lg px-4 py-2 transition-all hover:bg-blue-50 dark:hover:bg-blue-900/20 bg-white dark:bg-gray-800"
+                  >
+                    Try Apple Pay <span className="ml-2">→</span>
                   </Link>
                 </div>
               </div>
