@@ -271,8 +271,10 @@ export default function ApplePayFeature() {
                   </p>
                   <button
                     onClick={() => {
-                      console.log('Opening popup with original URL:', paymentLinkUrl);
-                      window.open(paymentLinkUrl, '_blank', 'width=500,height=700');
+                      if (paymentLinkUrl) {
+                        console.log('Opening popup with original URL:', paymentLinkUrl);
+                        window.open(paymentLinkUrl, '_blank', 'width=500,height=700');
+                      }
                     }}
                     className="text-sm text-yellow-800 dark:text-yellow-300 underline hover:no-underline"
                   >
