@@ -212,14 +212,15 @@ export async function POST(request: NextRequest) {
       clientIp: clientIp,
     };
     
-    // Domain is required for iframe embedding in production
-    // For localhost: use useApplePaySandbox=true query param instead of domain
-    // Make sure your production domain is allowlisted in CDP Portal > Payments > Domain allowlist
-    if (origin && !origin.includes('localhost') && !origin.includes('127.0.0.1')) {
+    // Domain is required for iframe embedding
+    // Include domain for ALL environments (localhost AND production)
+    // Frontend adds useApplePaySandbox=true for sandbox mode testing
+    // Make sure your domain is allowlisted in CDP Portal > Payments > Domain allowlist
+    if (origin) {
       requestBody.domain = origin;
       logger.debug('Including domain in request', { domain: origin });
     } else {
-      logger.debug('Omitting domain for localhost (will use useApplePaySandbox=true)', { origin });
+      logger.warn('No origin header found - domain not included in request');
     }
 
     logger.info('Creating Apple Pay order', { 
