@@ -112,20 +112,19 @@ export default function ApplePayFeature() {
 
       const data: ApplePayOrder = await response.json();
       
-      // Original URL for popup
+      // Original URL from API
       const originalUrl = data.paymentLinkUrl;
       
-      // For localhost only, append useApplePaySandbox=true
-      // Production domains (vercel.app) use the original URL
-      let iframeSandboxUrl = originalUrl;
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        iframeSandboxUrl = `${originalUrl}${originalUrl.includes('?') ? '&' : '?'}useApplePaySandbox=true`;
-        console.log('Localhost detected - using sandbox param');
-        console.log('Iframe URL (with sandbox):', iframeSandboxUrl);
-      } else {
-        console.log('Production domain - using original URL');
-        console.log('Iframe URL:', originalUrl);
-      }
+      // IMPORTANT: For sandbox mode (backend uses sandbox- prefix in partnerUserRef),
+      // we must append useApplePaySandbox=true to bypass domain validation.
+      // This applies to ALL environments (localhost AND production) during sandbox testing.
+      // Per internal engineering guidance: this parameter is required for iframe integration
+      // when testing with sandbox orders.
+      const iframeSandboxUrl = `${originalUrl}${originalUrl.includes('?') ? '&' : '?'}useApplePaySandbox=true`;
+      
+      console.log('Apple Pay order created successfully');
+      console.log('Original URL:', originalUrl);
+      console.log('Sandbox iframe URL:', iframeSandboxUrl);
       
       setPaymentLinkUrl(originalUrl); // For popup
       setIframeUrl(iframeSandboxUrl); // For iframe
