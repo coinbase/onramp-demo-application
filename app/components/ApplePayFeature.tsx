@@ -124,7 +124,9 @@ export default function ApplePayFeature() {
       
       console.log('Apple Pay order created successfully');
       console.log('Original URL:', originalUrl);
+      console.log('Has question mark?', originalUrl.includes('?'));
       console.log('Sandbox iframe URL:', iframeSandboxUrl);
+      console.log('URL includes sandbox param?', iframeSandboxUrl.includes('useApplePaySandbox=true'));
       
       setPaymentLinkUrl(originalUrl); // For popup
       setIframeUrl(iframeSandboxUrl); // For iframe
@@ -253,10 +255,12 @@ export default function ApplePayFeature() {
                       allow="payment"
                       onLoad={() => {
                         console.log('Iframe loaded successfully');
+                        console.log('Iframe src attribute:', iframeUrl);
                         setEventLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Apple Pay button ready`]);
                       }}
                       onError={(e) => {
                         console.error('Iframe error:', e);
+                        console.error('Failed iframe src:', iframeUrl);
                         setEventLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Error loading iframe`]);
                       }}
                     />
