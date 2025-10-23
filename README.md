@@ -6,12 +6,14 @@ A Next.js application demonstrating the integration of Coinbase's On-ramp and Of
 
 - **Coinbase Onramp Integration**: Allows users to purchase crypto with fiat currency
 - **Coinbase Offramp Integration**: Enables users to convert crypto back to fiat
+- **Apple Pay Onramp**: Fast, native Apple Pay integration with iframe embedding
 - **Secure Initialization**: Support for session tokens for enhanced security
 - **Wallet Connection**: Integrates with Web3 wallets via WalletConnect
 - **Responsive Design**: Modern UI that works across devices
 - **Multiple Integration Options**:
   - **Fund Card**: Pre-built UI component from Coinbase
   - **Custom Integration**: Fully customizable UI with enhanced dropdown options
+  - **Apple Pay**: Native Apple Pay experience with embedded iframe
 
 ## Getting Started
 
@@ -42,33 +44,51 @@ A Next.js application demonstrating the integration of Coinbase's On-ramp and Of
    cp .env.example .env.local
    ```
 
-4. Obtain the necessary API keys:
+4. Obtain the necessary API keys from the [Coinbase Developer Platform Dashboard](https://portal.cdp.coinbase.com/):
 
-   - **Onchain Kit API Key**: Get this from the [Coinbase Developer Platform Dashboard](https://portal.cdp.coinbase.com/)
-   - **CDP Project ID**: Get this from the [Coinbase Developer Platform Dashboard](https://portal.cdp.coinbase.com/)
-   - **CDP API Keys**: Get these from the [Coinbase Developer Platform Dashboard](https://portal.cdp.coinbase.com/)
-   - **Iron Password**: Create a secure password (at least 32 characters) for session encryption
+   - **CDP Project ID**: Your public project identifier (found in Projects dashboard)
+   - **CDP Secret API Key**: Create from API Keys > Secret API Keys (select Ed25519 format)
+   - **CDP API Private Key**: The base64-encoded private key from the API key creation
 
 5. Add your API keys to the `.env.local` file:
 
-   ```
-   # Client-side variables (accessible in browser)
-   NEXT_PUBLIC_ONCHAINKIT_API_KEY="your_onchainkit_api_key"
-   NEXT_PUBLIC_CDP_PROJECT_ID="your_cdp_project_id"
-   
-   # Server-side variables (not accessible in browser)
-   IRON_PASSWORD="your_secure_password_at_least_32_chars_long"
-   CDP_API_KEY_NAME="your_cdp_api_key_name"
-   CDP_API_KEY_PRIVATE_KEY="your_cdp_api_private_key"
-   CDP_PROJECT_ID="your_cdp_project_id"
-   ONCHAINKIT_API_KEY="your_onchainkit_api_key"
-   
-   # For Secure Initialization (Session Tokens)
-   CDP_API_KEY="your_cdp_api_key"
-   CDP_API_SECRET="your_cdp_api_secret"
-   
-   # CORS Security (Production) - Add your production domains
-   ALLOWED_ORIGINS="https://yourdomain.com,https://www.yourdomain.com"
+   ```bash
+   # ==============================================
+   # PUBLIC ENVIRONMENT VARIABLES (safe to expose)
+   # ==============================================
+
+   # CDP Project ID - This is your public project identifier
+   # Get from: https://portal.cdp.coinbase.com/
+   NEXT_PUBLIC_CDP_PROJECT_ID="your_project_id_here"
+
+   # Project Name (optional)
+   NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME="Coinbase Ramp Demo"
+
+   # ==============================================
+   # PRIVATE ENVIRONMENT VARIABLES (server-side only)
+   # ==============================================
+
+   # CDP Secret API Key Name/ID
+   # Get from: https://portal.cdp.coinbase.com/access/api
+   # When creating the key, select "Ed25519" as the signature algorithm (recommended)
+   # Format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+   CDP_API_KEY="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+   # CDP API Private Key (Ed25519 format - recommended)
+   # Copy the base64-encoded key from CDP Portal
+   # Format: A long base64 string ending with "=="
+   CDP_API_SECRET="your-base64-encoded-ed25519-private-key-here=="
+
+   # ==============================================
+   # OPTIONAL
+   # ==============================================
+
+   # CORS Origins - Comma-separated list of allowed origins
+   # Add your production domain(s) here for Apple Pay and custom integrations
+   ALLOWED_ORIGINS="http://localhost:3000,http://localhost:3001,https://yourdomain.com"
+
+   # Node environment
+   NODE_ENV=development
    ```
 
    > **IMPORTANT**: Never commit your API keys to the repository. The `.env.local` file is included in `.gitignore` to prevent accidental exposure.

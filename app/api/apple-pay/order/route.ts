@@ -212,15 +212,16 @@ export async function POST(request: NextRequest) {
       clientIp: clientIp,
     };
     
-    // Domain is required for iframe embedding
-    // Include domain for ALL environments (localhost AND production)
-    // Frontend adds useApplePaySandbox=true for sandbox mode testing
-    // Make sure your domain is allowlisted in CDP Portal > Payments > Domain allowlist
-    if (origin) {
+    // Domain parameter is required for iframe embedding (like Porto's implementation)
+    // For HTTPS production domains: include domain to enable iframe embedding
+    // For localhost: skip domain to avoid "not allowlisted" errors (iframe won't work anyway)
+    if (origin && origin.startsWith('https://')) {
       requestBody.domain = origin;
-      logger.debug('Including domain in request', { domain: origin });
+      logger.info('Including domain for iframe embedding', { domain: origin });
+    } else if (origin && origin.includes('localhost')) {
+      logger.info('Skipping domain for localhost (use new tab option for testing)', { origin });
     } else {
-      logger.warn('No origin header found - domain not included in request');
+      logger.warn('No valid origin - domain not included');
     }
 
     logger.info('Creating Apple Pay order', { 
@@ -248,15 +249,34 @@ export async function POST(request: NextRequest) {
       logger.error('CDP API error', {
         status: response.status,
         statusText: response.statusText,
-        response: responseText
+        response: responseText,
+        sentDomain: origin,
+        allowlistedDomains: 'Check CDP Portal > Payments > Domain allowlist'
       });
+
+      // Parse the error response
+      let errorMessage = 'Failed to create Apple Pay order';
+      let errorDetails = responseText;
+
+      try {
+        const errorData = JSON.parse(responseText);
+        errorMessage = errorData.errorMessage || errorMessage;
+
+        // If domain not allowlisted, provide helpful message
+        if (errorMessage.includes('Domain is not allow listed')) {
+          errorMessage = `Domain "${origin}" is not allowlisted. Please add it to CDP Portal > Payments > Domain allowlist. Make sure the protocol (http/https) matches exactly.`;
+        }
+      } catch (e) {
+        // responseText is not JSON, use as-is
+      }
 
       // In development, return more details
       if (process.env.NODE_ENV === 'development') {
         return NextResponse.json(
           {
-            error: 'Failed to create Apple Pay order',
-            details: responseText,
+            error: errorMessage,
+            details: errorDetails,
+            sentDomain: origin,
             status: response.status
           },
           { status: response.status, headers: corsHeaders }
@@ -264,7 +284,7 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json(
-        { error: 'Failed to create Apple Pay order' },
+        { error: errorMessage },
         { status: response.status, headers: corsHeaders }
       );
     }
