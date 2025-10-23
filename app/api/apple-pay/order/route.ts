@@ -117,18 +117,50 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email, phoneNumber, amount, asset, network, destinationAddress } = body;
 
+    logger.info('Apple Pay order request received', {
+      email,
+      phoneNumber: phoneNumber ? `${phoneNumber.substring(0, 5)}...` : 'missing',
+      amount,
+      asset,
+      network,
+      destinationAddress: destinationAddress ? `${destinationAddress.substring(0, 10)}...` : 'missing'
+    });
+
     // Validate required fields
     if (!email || !phoneNumber || !destinationAddress) {
+      const missingFields = [];
+      if (!email) missingFields.push('email');
+      if (!phoneNumber) missingFields.push('phoneNumber');
+      if (!destinationAddress) missingFields.push('destinationAddress');
+      
+      logger.warn('Missing required fields', { missingFields });
       return NextResponse.json(
-        { error: 'Missing required fields: email, phoneNumber, and destinationAddress are required' },
+        { 
+          error: 'Missing required fields', 
+          details: `Missing: ${missingFields.join(', ')}`,
+          required: ['email', 'phoneNumber', 'destinationAddress']
+        },
         { status: 400, headers: corsHeaders }
       );
     }
 
     // Validate phone number format (US only)
     if (!phoneNumber.match(/^\+1\d{10}$/)) {
+      logger.warn('Invalid phone number format', { phoneNumber: phoneNumber.substring(0, 5) + '...' });
       return NextResponse.json(
-        { error: 'Invalid phone number format. Must be +1XXXXXXXXXX (US only)' },
+        { 
+          error: 'Invalid phone number format. Must be +1XXXXXXXXXX (US only)',
+          example: '+12345678901'
+        },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    // Validate amount
+    if (!amount || isNaN(amount) || amount <= 0) {
+      logger.warn('Invalid amount', { amount });
+      return NextResponse.json(
+        { error: 'Invalid amount. Must be a positive number' },
         { status: 400, headers: corsHeaders }
       );
     }
@@ -149,8 +181,11 @@ export async function POST(request: NextRequest) {
     // Call Coinbase v2 Order API
     const cdpApiUrl = 'https://api.cdp.coinbase.com/platform/v2/onramp/orders';
     
-    // Use sandbox prefix for testing (no real charges)
+    // SANDBOX MODE: Use sandbox prefix for testing (no real charges)
+    // This ensures all transactions are in sandbox mode and no real funds are transferred
+    // Combined with useApplePaySandbox=true on the frontend, this provides full sandbox testing
     const partnerUserRef = `sandbox-${email.split('@')[0]}-${Date.now()}`;
+    logger.info('Using sandbox mode', { partnerUserRef });
     
     // Get current timestamp for agreements
     const currentTimestamp = new Date().toISOString();

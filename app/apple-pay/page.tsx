@@ -40,7 +40,7 @@ export default function ApplePayPage() {
               </p>
 
               <Link
-                href="https://docs.cdp.coinbase.com/onramp/docs/apple-pay-onramp-api"
+                href="https://docs.cdp.coinbase.com/onramp-&-offramp/onramp-apis/apple-pay-onramp-api"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium mb-10"
