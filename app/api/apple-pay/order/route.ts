@@ -247,16 +247,16 @@ export async function POST(request: NextRequest) {
       clientIp: clientIp,
     };
     
-    // IMPORTANT: Domain parameter handling for sandbox mode
-    // For sandbox testing (with useApplePaySandbox=true on frontend):
-    // - We must OMIT the domain parameter entirely for localhost
-    // - The frontend appends useApplePaySandbox=true which bypasses domain checks
-    // - For production domains, include the domain (must be allowlisted in CDP Portal)
-    if (origin && !origin.includes('localhost') && !origin.includes('127.0.0.1')) {
+    // Domain parameter is required for iframe embedding (like Porto's implementation)
+    // For HTTPS production domains: include domain to enable iframe embedding
+    // For localhost: skip domain to avoid "not allowlisted" errors (iframe won't work anyway)
+    if (origin && origin.startsWith('https://')) {
       requestBody.domain = origin;
-      logger.info('Including domain for production', { domain: origin });
+      logger.info('Including domain for iframe embedding', { domain: origin });
+    } else if (origin && origin.includes('localhost')) {
+      logger.info('Skipping domain for localhost (use new tab option for testing)', { origin });
     } else {
-      logger.info('Omitting domain for localhost - sandbox mode will use useApplePaySandbox=true', { origin });
+      logger.warn('No valid origin - domain not included');
     }
 
     logger.info('Creating Apple Pay order', { 
@@ -284,34 +284,42 @@ export async function POST(request: NextRequest) {
       logger.error('CDP API error', {
         status: response.status,
         statusText: response.statusText,
-        response: responseText
+        response: responseText,
+        sentDomain: origin,
+        allowlistedDomains: 'Check CDP Portal > Payments > Domain allowlist'
       });
 
-      let errorDetails = 'Failed to create Apple Pay order';
+      // Parse the error response
+      let errorMessage = 'Failed to create Apple Pay order';
+      let errorDetails = responseText;
+
       try {
         const errorData = JSON.parse(responseText);
-        if (errorData.errorMessage) {
-          errorDetails = errorData.errorMessage;
+        errorMessage = errorData.errorMessage || errorMessage;
+
+        // If domain not allowlisted, provide helpful message
+        if (errorMessage.includes('Domain is not allow listed')) {
+          errorMessage = `Domain "${origin}" is not allowlisted. Please add it to CDP Portal > Payments > Domain allowlist. Make sure the protocol (http/https) matches exactly.`;
         }
       } catch (e) {
-        // If response is not JSON, use raw text
-        errorDetails = responseText || 'Unknown error from CDP API';
+        // responseText is not JSON, use as-is
       }
 
-      // In development or if explicitly requested, return more details
-      const isDevelopment = process.env.NODE_ENV === 'development';
-      
+      // In development, return more details
+      if (process.env.NODE_ENV === 'development') {
+        return NextResponse.json(
+          {
+            error: errorMessage,
+            details: errorDetails,
+            sentDomain: origin,
+            status: response.status
+          },
+          { status: response.status, headers: corsHeaders }
+        );
+      }
+
       return NextResponse.json(
-        {
-          error: errorDetails,
-          status: response.status,
-          ...(isDevelopment && { 
-            debug: {
-              statusText: response.statusText,
-              rawResponse: responseText
-            }
-          })
-        },
+        { error: errorMessage },
         { status: response.status, headers: corsHeaders }
       );
     }

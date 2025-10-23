@@ -1,35 +1,5 @@
 "use client";
 
-/**
- * Apple Pay Onramp Feature
- * 
- * This component implements Apple Pay onramp with seamless embedded iframe experience.
- * 
- * IMPLEMENTATION:
- * - Form inputs directly visible on page
- * - Creates order via CDP v2 Onramp API
- * - Embeds Coinbase's Apple Pay button in iframe after order creation
- * - Works on all allowlisted domains (localhost and production)
- * - Backend uses sandbox- prefix for safe testing
- * 
- * FLOW:
- * 1. User connects wallet
- * 2. User fills in email, phone, and transaction details directly on page
- * 3. Backend creates order via CDP v2 Onramp API with sandbox prefix
- * 4. Frontend displays Apple Pay button in embedded iframe
- * 5. User completes payment without leaving the app
- * 
- * SANDBOX MODE:
- * - Backend uses sandbox- prefix in partnerUserRef
- * - No real charges are ever made
- * - Safe for testing on all environments
- * 
- * For production (real charges):
- * - Remove sandbox- prefix from partnerUserRef in backend
- * - Implement proper OTP verification
- * - Display and require acceptance of Coinbase Terms
- */
-
 import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 
@@ -40,6 +10,8 @@ interface ApplePayOrder {
 
 export default function ApplePayFeature() {
   const { address, isConnected } = useAccount();
+  const [showModal, setShowModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [amount, setAmount] = useState("20");
@@ -93,6 +65,19 @@ export default function ApplePayFeature() {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
+  const handleAddFunds = () => {
+    if (!isConnected) {
+      alert("Please connect your wallet first");
+      return;
+    }
+
+    // Open modal with form (don't auto-create order)
+    setShowPaymentModal(true);
+    setError(null);
+    setIframeUrl(null);
+    setPaymentLinkUrl(null);
+  };
+
   const handleCreateOrder = async () => {
     setError(null);
     setIsLoading(true);
@@ -125,35 +110,38 @@ export default function ApplePayFeature() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('API Error:', errorData);
-        
-        // Display detailed error if available
-        let errorMessage = errorData.error || 'Failed to create order';
-        if (errorData.details) {
-          errorMessage += ` - ${errorData.details}`;
-        }
-        if (errorData.debug) {
-          console.error('Debug info:', errorData.debug);
-          errorMessage += ` (See console for debug details)`;
-        }
-        
-        throw new Error(errorMessage);
+        throw new Error(errorData.error || 'Failed to create order');
       }
 
       const data: ApplePayOrder = await response.json();
-      
+
       // Original URL from API
       const originalUrl = data.paymentLinkUrl;
-      
+
+      // IMPORTANT: useApplePaySandbox=true is ONLY needed for localhost testing
+      // Per engineering guidance: "Localhost will never work with Apple Pay,
+      // to test iframe integration locally add the query param 'useApplePaySandbox=true'"
+      //
+      // For production HTTPS domains: Use original URL without the sandbox param
+      // For localhost: Add sandbox param to bypass domain validation (for testing only)
+      const isLocalhost = window.location.hostname === 'localhost' ||
+                         window.location.hostname === '127.0.0.1';
+
+      const iframeUrl = isLocalhost
+        ? `${originalUrl}${originalUrl.includes('?') ? '&' : '?'}useApplePaySandbox=true`
+        : originalUrl;
+
       console.log('Apple Pay order created successfully');
-      console.log('Apple Pay URL:', originalUrl);
-      
-      // Store the payment link to display it on the page
-      setPaymentLinkUrl(originalUrl);
-      setIframeUrl(originalUrl);
+      console.log('Environment:', isLocalhost ? 'localhost' : 'production');
+      console.log('Payment URL:', iframeUrl);
+
+      setPaymentLinkUrl(originalUrl); // For popup
+      setIframeUrl(iframeUrl); // For iframe
+      setShowModal(false);
+      setShowPaymentModal(true); // Open payment modal
       setEventLogs([
         `[${new Date().toLocaleTimeString()}] Order created successfully`,
-        `[${new Date().toLocaleTimeString()}] Apple Pay ready - click button below to pay`
+        `[${new Date().toLocaleTimeString()}] Loading Apple Pay button...`
       ]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -169,14 +157,14 @@ export default function ApplePayFeature() {
           {/* Info Banner */}
           <div className="mb-8 p-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <h3 className="font-bold text-blue-900 dark:text-blue-200 mb-3 text-lg">
-              🍎 Apple Pay Onramp
+              🍎 Apple Pay Onramp - Native Experience
             </h3>
             <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-2">
               <li>✓ Fastest onramp experience available</li>
               <li>✓ US users only (valid US phone number required)</li>
-              <li>✓ Embedded Apple Pay button on this page</li>
-              <li>✓ Complete payment without leaving the app</li>
-              <li>✓ Sandbox mode enabled (no real charges)</li>
+              <li>✓ Apple Pay button embedded directly in iframe</li>
+              <li>✓ Sandbox mode enabled for testing (no charges)</li>
+              <li>✓ Localhost testing enabled with useApplePaySandbox=true</li>
             </ul>
           </div>
 
@@ -193,7 +181,7 @@ export default function ApplePayFeature() {
             </ul>
           </div>
 
-          {/* Demo Card with Direct Form */}
+          {/* Demo Card */}
           <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 p-8 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
             <h2 className="text-2xl font-bold mb-6 text-center">
               Try Apple Pay Onramp
@@ -223,7 +211,220 @@ export default function ApplePayFeature() {
                 </div>
               </div>
 
-              {/* Direct Form Inputs */}
+              {/* Action Button */}
+              <button
+                onClick={handleAddFunds}
+                disabled={!isConnected}
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-semibold py-4 px-6 rounded-xl transition-all transform hover:scale-[1.02] disabled:scale-100 shadow-lg disabled:cursor-not-allowed"
+              >
+                {isConnected ? "Add Funds with Apple Pay" : "Connect Wallet First"}
+              </button>
+
+              {!isConnected && (
+                <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+                  Please connect your wallet to continue
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Payment Modal - Porto Style: Clean and Simple */}
+          {showPaymentModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+                <div className="p-6">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold">Add funds</h2>
+                    <button
+                      onClick={() => {
+                        setShowPaymentModal(false);
+                        setPaymentLinkUrl(null);
+                        setIframeUrl(null);
+                        setIsLoading(false);
+                      }}
+                      className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Show loading state while creating order */}
+                  {isLoading && !iframeUrl && (
+                    <div className="flex items-center justify-center py-20">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    </div>
+                  )}
+
+                  {/* Show error if any */}
+                  {error && (
+                    <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">
+                      {error}
+                    </div>
+                  )}
+
+                  {/* Apple Pay iframe - Front and center like Porto */}
+                  {iframeUrl ? (
+                    <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mb-4">
+                      <iframe
+                        src={iframeUrl}
+                        className="w-full h-[500px] border-0"
+                        title="Apple Pay Purchase"
+                        allow="payment"
+                        onLoad={() => {
+                          console.log('Apple Pay iframe loaded');
+                          setEventLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Apple Pay ready`]);
+                          setIsLoading(false);
+                        }}
+                        onError={(e) => {
+                          console.error('Iframe error:', e);
+                          setError('Failed to load Apple Pay. Try refreshing.');
+                          setIsLoading(false);
+                        }}
+                      />
+                    </div>
+                  ) : !isLoading ? (
+                    /* Show form when iframe is not loaded and not loading */
+                    <div className="space-y-4">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                        Enter your details to continue with Apple Pay
+                      </p>
+
+                      {/* Email */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Email (Verified) *
+                        </label>
+                        <input
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="user@example.com"
+                          className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+
+                      {/* Phone Number */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Phone Number (US) *
+                        </label>
+                        <input
+                          type="tel"
+                          value={phoneNumber}
+                          onChange={(e) => setPhoneNumber(e.target.value)}
+                          placeholder="+12345678901"
+                          className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Format: +1XXXXXXXXXX</p>
+                      </div>
+
+                      {/* Destination Address */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Destination Address *
+                        </label>
+                        <input
+                          type="text"
+                          value={destinationAddress}
+                          onChange={(e) => setDestinationAddress(e.target.value)}
+                          placeholder="0x..."
+                          className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                        />
+                      </div>
+
+                      {/* Amount */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Amount (USD)
+                        </label>
+                        <input
+                          type="number"
+                          value={amount}
+                          onChange={(e) => setAmount(e.target.value)}
+                          className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+
+                      {/* Asset */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Asset</label>
+                        <select
+                          value={asset}
+                          onChange={(e) => setAsset(e.target.value)}
+                          className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="USDC">USDC</option>
+                          <option value="ETH">ETH</option>
+                          <option value="BTC">BTC</option>
+                        </select>
+                      </div>
+
+                      {/* Network */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Network</label>
+                        <select
+                          value={network}
+                          onChange={(e) => setNetwork(e.target.value)}
+                          className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="base">Base</option>
+                          <option value="ethereum">Ethereum</option>
+                          <option value="polygon">Polygon</option>
+                        </select>
+                      </div>
+
+                      <button
+                        onClick={handleCreateOrder}
+                        disabled={isLoading || !destinationAddress}
+                        className="w-full bg-black dark:bg-white text-white dark:text-black font-semibold py-4 px-6 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-100 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {isLoading ? "Creating Order..." : "Continue with Apple Pay"}
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {/* Back button */}
+                  <button
+                    onClick={() => {
+                      setShowPaymentModal(false);
+                      setPaymentLinkUrl(null);
+                      setIframeUrl(null);
+                      setIsLoading(false);
+                    }}
+                    className="w-full text-center py-3 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium mt-4"
+                  >
+                    Back
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Configuration Modal - Hidden for now, using auto-fill */}
+      {false && showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">Add Funds</h2>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                Select deposit method
+              </p>
+
               <div className="space-y-4">
                 {/* Email */}
                 <div>
@@ -315,99 +516,18 @@ export default function ApplePayFeature() {
                   </div>
                 )}
 
-                {/* Submit Button - Creates the order */}
                 <button
                   onClick={handleCreateOrder}
-                  disabled={isLoading || !isConnected || !destinationAddress || paymentLinkUrl !== null}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-4 px-6 rounded-xl disabled:cursor-not-allowed transition-colors shadow-lg"
+                  disabled={isLoading || !destinationAddress}
+                  className="w-full bg-black dark:bg-white text-white dark:text-black font-semibold py-4 px-6 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-100 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
-                  {isLoading ? "Creating Order..." : paymentLinkUrl ? "Order Created ✓" : "Create Order"}
+                  {isLoading ? "Creating Order..." : "Buy with Apple Pay"}
                 </button>
-
-                {!isConnected && (
-                  <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-                    Please connect your wallet first
-                  </p>
-                )}
-
-                {/* Embedded Apple Pay - Appears after order is created */}
-                {paymentLinkUrl && (
-                  <div className="mt-6 space-y-4">
-                    <div className="h-px bg-gray-200 dark:bg-gray-700"></div>
-                    
-                    <p className="text-center text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Order created! Complete your payment:
-                    </p>
-
-                    {/* EMBEDDED Apple Pay iframe */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border-2 border-gray-200 dark:border-gray-700">
-                      <iframe
-                        src={paymentLinkUrl}
-                        className="w-full h-[500px] border-0"
-                        title="Apple Pay Checkout"
-                        allow="payment"
-                        onLoad={() => {
-                          console.log('Apple Pay iframe loaded successfully!');
-                          setEventLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Apple Pay button embedded and ready`]);
-                        }}
-                        onError={(e) => {
-                          console.error('Iframe error:', e);
-                          setEventLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Error loading Apple Pay`]);
-                        }}
-                      />
-                    </div>
-
-                    {/* Info message */}
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                      <div className="flex gap-2 items-start">
-                        <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div className="text-xs text-blue-800 dark:text-blue-200">
-                          <p className="font-semibold">Click the Apple Pay button above to complete your purchase</p>
-                          <p className="text-blue-700 dark:text-blue-300 mt-1">
-                            Desktop: QR code will appear | Mobile: Apple Pay opens
-                          </p>
-                          <p className="text-blue-600 dark:text-blue-400 mt-1">
-                            🔒 Sandbox mode - No real charges
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Event log */}
-                    {eventLogs.length > 0 && (
-                      <details className="text-xs">
-                        <summary className="cursor-pointer text-gray-600 dark:text-gray-400 mb-2">
-                          Event Log ({eventLogs.length})
-                        </summary>
-                        <div className="bg-black text-green-400 p-3 rounded font-mono text-xs max-h-32 overflow-y-auto">
-                          {eventLogs.map((log, i) => (
-                            <div key={i} className="mb-1 break-words">{log}</div>
-                          ))}
-                        </div>
-                      </details>
-                    )}
-
-                    {/* Reset button */}
-                    <button
-                      onClick={() => {
-                        setPaymentLinkUrl(null);
-                        setIframeUrl(null);
-                        setEventLogs([]);
-                      }}
-                      className="w-full text-center py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-sm"
-                    >
-                      Start New Order
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
           </div>
-
         </div>
-      </div>
+      )}
     </div>
   );
 }
