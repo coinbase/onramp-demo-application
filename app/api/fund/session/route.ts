@@ -9,6 +9,7 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || [
   // Production domains
   'https://onramp-demo-application-git-main-coinbase-vercel.vercel.app',
   'https://www.onrampdemo.com',
+  'https://onramp-demo-application-coinbase-vercel.vercel.app/'
 ];
 
 function setCorsHeaders(origin: string | null): Record<string, string> {
