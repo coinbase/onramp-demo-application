@@ -2,16 +2,28 @@
 
 import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
+import confetti from "canvas-confetti";
 
 interface ApplePayOrder {
   paymentLinkUrl: string;
   orderId: string;
+  partnerUserRef?: string;
+}
+
+interface TransactionDetails {
+  amount: string;
+  asset: string;
+  network: string;
+  destinationAddress: string;
+  orderId?: string;
+  txHash?: string;
 }
 
 export default function ApplePayFeature() {
   const { address, isConnected } = useAccount();
   const [showModal, setShowModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [amount, setAmount] = useState("20");
@@ -23,6 +35,8 @@ export default function ApplePayFeature() {
   const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null);
   const [iframeUrl, setIframeUrl] = useState<string | null>(null);
   const [eventLogs, setEventLogs] = useState<string[]>([]);
+  const [transactionDetails, setTransactionDetails] = useState<TransactionDetails | null>(null);
+  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
 
   // Update destination address when wallet connects
   useEffect(() => {
@@ -57,13 +71,50 @@ export default function ApplePayFeature() {
         setError(null);
       } else if (eventName === 'onramp_api.polling_success') {
         setError(null);
-        alert('Transaction completed successfully! 🎉');
+        // Payment successful! Show success message in the same modal
+        setTransactionDetails({
+          amount,
+          asset,
+          network,
+          destinationAddress,
+          orderId: currentOrderId || undefined,
+          txHash: data?.txHash || undefined,
+        });
+        setShowSuccessModal(true);
+        // Keep payment modal open, but success content will show instead
+
+        // Trigger confetti animation
+        const duration = 3000;
+        const end = Date.now() + duration;
+
+        const colors = ['#0052FF', '#5B8DEF', '#00D395', '#FFB800'];
+
+        (function frame() {
+          confetti({
+            particleCount: 3,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0 },
+            colors: colors
+          });
+          confetti({
+            particleCount: 3,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1 },
+            colors: colors
+          });
+
+          if (Date.now() < end) {
+            requestAnimationFrame(frame);
+          }
+        }());
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [amount, asset, network, destinationAddress, currentOrderId]);
 
   const handleCreateOrder = async () => {
     setError(null);
@@ -101,6 +152,9 @@ export default function ApplePayFeature() {
       }
 
       const data: ApplePayOrder = await response.json();
+
+      // Save order ID for transaction tracking
+      setCurrentOrderId(data.orderId);
 
       // Original URL from API
       const originalUrl = data.paymentLinkUrl;
@@ -307,19 +361,27 @@ export default function ApplePayFeature() {
             )}
           </div>
 
-          {/* Payment Modal - Shows Apple Pay iframe */}
+          {/* Payment Modal - Shows Apple Pay iframe or Success Message */}
           {showPaymentModal && iframeUrl && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold">Add funds</h2>
+                    <h2 className="text-2xl font-bold">{showSuccessModal ? "Payment Successful!" : "Add funds"}</h2>
                     <button
                       onClick={() => {
                         setShowPaymentModal(false);
+                        setShowSuccessModal(false);
                         setPaymentLinkUrl(null);
                         setIframeUrl(null);
                         setIsLoading(false);
+                        setTransactionDetails(null);
+                        // Reset form if success
+                        if (showSuccessModal) {
+                          setEmail("");
+                          setPhoneNumber("");
+                          setAmount("20");
+                        }
                       }}
                       className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                     >
@@ -330,44 +392,146 @@ export default function ApplePayFeature() {
                   </div>
 
                   {/* Show error if any */}
-                  {error && (
+                  {error && !showSuccessModal && (
                     <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">
                       {error}
                     </div>
                   )}
 
-                  {/* Apple Pay iframe */}
-                  <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mb-4">
-                    <iframe
-                      src={iframeUrl}
-                      className="w-full h-[500px] border-0"
-                      title="Apple Pay Purchase"
-                      allow="payment"
-                      onLoad={() => {
-                        console.log('Apple Pay iframe loaded');
-                        setEventLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Apple Pay ready`]);
-                        setIsLoading(false);
-                      }}
-                      onError={(e) => {
-                        console.error('Iframe error:', e);
-                        setError('Failed to load Apple Pay. Try refreshing.');
-                        setIsLoading(false);
-                      }}
-                    />
-                  </div>
+                  {/* Show Success Message or Apple Pay iframe */}
+                  {showSuccessModal && transactionDetails ? (
+                    <div className="text-center">
+                      {/* Success Icon */}
+                      <div className="flex justify-center mb-6">
+                        <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                          <svg className="w-12 h-12 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      </div>
 
-                  {/* Back button */}
-                  <button
-                    onClick={() => {
-                      setShowPaymentModal(false);
-                      setPaymentLinkUrl(null);
-                      setIframeUrl(null);
-                      setIsLoading(false);
-                    }}
-                    className="w-full text-center py-3 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium mt-4"
-                  >
-                    Back
-                  </button>
+                      {/* Sandbox Badge */}
+                      <div className="inline-flex items-center px-3 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 mb-4">
+                        <span className="text-yellow-700 dark:text-yellow-300 text-sm font-medium">
+                          🧪 Sandbox Transaction - No Real Funds
+                        </span>
+                      </div>
+
+                      <p className="text-center text-gray-600 dark:text-gray-400 mb-6 text-lg">
+                        🎉 Test transaction completed successfully!
+                      </p>
+
+                      {/* Transaction Details */}
+                      <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 space-y-3 mb-6 text-left">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">Amount</span>
+                          <span className="font-semibold">${transactionDetails.amount} USD</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">Asset</span>
+                          <span className="font-semibold">{transactionDetails.asset}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">Network</span>
+                          <span className="font-semibold capitalize">{transactionDetails.network}</span>
+                        </div>
+                        <div className="flex justify-between items-start">
+                          <span className="text-gray-600 dark:text-gray-400">To</span>
+                          <span className="font-mono text-xs font-semibold break-all text-right max-w-[300px]">
+                            {transactionDetails.destinationAddress}
+                          </span>
+                        </div>
+                        {transactionDetails.orderId && (
+                          <div className="flex justify-between items-start">
+                            <span className="text-gray-600 dark:text-gray-400">Order ID</span>
+                            <span className="font-mono text-xs font-semibold break-all text-right max-w-[300px]">
+                              {transactionDetails.orderId}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-start">
+                          <span className="text-gray-600 dark:text-gray-400">Status</span>
+                          <span className="font-semibold text-green-600 dark:text-green-400">
+                            Test Completed ✓
+                          </span>
+                        </div>
+                        {transactionDetails.txHash && transactionDetails.txHash !== '0x' ? (
+                          <div className="flex justify-between items-start">
+                            <span className="text-gray-600 dark:text-gray-400">Tx Hash</span>
+                            <a
+                              href={`https://basescan.org/tx/${transactionDetails.txHash}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-mono text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline break-all text-right max-w-[300px]"
+                            >
+                              View on BaseScan →
+                            </a>
+                          </div>
+                        ) : (
+                          <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 italic text-center">
+                              In sandbox mode, no real blockchain transaction occurs.
+                              <br />
+                              In production, you'll receive a transaction hash here.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Done Button */}
+                      <button
+                        onClick={() => {
+                          setShowPaymentModal(false);
+                          setShowSuccessModal(false);
+                          setTransactionDetails(null);
+                          setPaymentLinkUrl(null);
+                          setIframeUrl(null);
+                          // Reset form
+                          setEmail("");
+                          setPhoneNumber("");
+                          setAmount("20");
+                        }}
+                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 px-6 rounded-lg transition-all"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Apple Pay iframe */}
+                      <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mb-4">
+                        <iframe
+                          src={iframeUrl}
+                          className="w-full h-[500px] border-0"
+                          title="Apple Pay Purchase"
+                          allow="payment"
+                          onLoad={() => {
+                            console.log('Apple Pay iframe loaded');
+                            setEventLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Apple Pay ready`]);
+                            setIsLoading(false);
+                          }}
+                          onError={(e) => {
+                            console.error('Iframe error:', e);
+                            setError('Failed to load Apple Pay. Try refreshing.');
+                            setIsLoading(false);
+                          }}
+                        />
+                      </div>
+
+                      {/* Back button */}
+                      <button
+                        onClick={() => {
+                          setShowPaymentModal(false);
+                          setPaymentLinkUrl(null);
+                          setIframeUrl(null);
+                          setIsLoading(false);
+                        }}
+                        className="w-full text-center py-3 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium mt-4"
+                      >
+                        Back
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

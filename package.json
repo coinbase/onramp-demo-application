@@ -16,6 +16,7 @@
     "@react-types/shared": "^3.27.0",
     "@tanstack/react-query": "^5",
     "@types/jsonwebtoken": "^9.0.10",
+    "canvas-confetti": "^1.9.3",
     "framer-motion": "^12.4.10",
     "jose": "^6.0.11",
     "jsonwebtoken": "^9.0.2",
@@ -30,6 +31,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "20.17.24",
     "@types/react": "18.3.19",
     "@types/react-dom": "^18",
