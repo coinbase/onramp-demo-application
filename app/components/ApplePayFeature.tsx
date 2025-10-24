@@ -65,19 +65,6 @@ export default function ApplePayFeature() {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  const handleAddFunds = () => {
-    if (!isConnected) {
-      alert("Please connect your wallet first");
-      return;
-    }
-
-    // Open modal with form (don't auto-create order)
-    setShowPaymentModal(true);
-    setError(null);
-    setIframeUrl(null);
-    setPaymentLinkUrl(null);
-  };
-
   const handleCreateOrder = async () => {
     setError(null);
     setIsLoading(true);
@@ -187,49 +174,141 @@ export default function ApplePayFeature() {
               Try Apple Pay Onramp
             </h2>
 
-            <div className="space-y-6">
-              {/* Current Configuration Display */}
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
-                <h3 className="font-semibold mb-4 text-lg">Configuration</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-600 dark:text-gray-400">Amount:</span>
-                    <span className="ml-2 font-medium">${amount} USD</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600 dark:text-gray-400">Asset:</span>
-                    <span className="ml-2 font-medium">{asset}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600 dark:text-gray-400">Network:</span>
-                    <span className="ml-2 font-medium capitalize">{network}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600 dark:text-gray-400">Mode:</span>
-                    <span className="ml-2 font-medium text-green-600">Sandbox</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Button */}
-              <button
-                onClick={handleAddFunds}
-                disabled={!isConnected}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-semibold py-4 px-6 rounded-xl transition-all transform hover:scale-[1.02] disabled:scale-100 shadow-lg disabled:cursor-not-allowed"
-              >
-                {isConnected ? "Add Funds with Apple Pay" : "Connect Wallet First"}
-              </button>
-
-              {!isConnected && (
-                <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+            {!isConnected ? (
+              <div className="text-center py-12">
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
                   Please connect your wallet to continue
                 </p>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Show error if any */}
+                {error && (
+                  <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">
+                    {error}
+                  </div>
+                )}
+
+                {/* Email */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Email (Verified) *
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="user@example.com"
+                    className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                {/* Phone Number */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Phone Number (US) *
+                  </label>
+                  <input
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="+12345678901"
+                    className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Format: +1XXXXXXXXXX</p>
+                </div>
+
+                {/* Destination Address */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Destination Address *
+                  </label>
+                  <input
+                    type="text"
+                    value={destinationAddress}
+                    onChange={(e) => setDestinationAddress(e.target.value)}
+                    placeholder="0x..."
+                    className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                  />
+                </div>
+
+                {/* Amount */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Amount (USD)
+                  </label>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                {/* Asset */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Asset</label>
+                  <select
+                    value={asset}
+                    onChange={(e) => setAsset(e.target.value)}
+                    className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="USDC">USDC</option>
+                    <option value="ETH">ETH</option>
+                    <option value="BTC">BTC</option>
+                  </select>
+                </div>
+
+                {/* Network */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Network</label>
+                  <select
+                    value={network}
+                    onChange={(e) => setNetwork(e.target.value)}
+                    className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="base">Base</option>
+                    <option value="ethereum">Ethereum</option>
+                    <option value="polygon">Polygon</option>
+                  </select>
+                </div>
+
+                {/* Configuration Display */}
+                <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Amount:</span>
+                      <span className="ml-2 font-medium">${amount} USD</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Asset:</span>
+                      <span className="ml-2 font-medium">{asset}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Network:</span>
+                      <span className="ml-2 font-medium capitalize">{network}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Mode:</span>
+                      <span className="ml-2 font-medium text-green-600">Sandbox</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Button */}
+                <button
+                  onClick={handleCreateOrder}
+                  disabled={isLoading || !email || !phoneNumber || !destinationAddress}
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-semibold py-4 px-6 rounded-xl transition-all transform hover:scale-[1.02] disabled:scale-100 shadow-lg disabled:cursor-not-allowed"
+                >
+                  {isLoading ? "Creating Order..." : "Add Funds with Apple Pay"}
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Payment Modal - Porto Style: Clean and Simple */}
-          {showPaymentModal && (
+          {/* Payment Modal - Shows Apple Pay iframe */}
+          {showPaymentModal && iframeUrl && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
                 <div className="p-6">
@@ -250,13 +329,6 @@ export default function ApplePayFeature() {
                     </button>
                   </div>
 
-                  {/* Show loading state while creating order */}
-                  {isLoading && !iframeUrl && (
-                    <div className="flex items-center justify-center py-20">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                    </div>
-                  )}
-
                   {/* Show error if any */}
                   {error && (
                     <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">
@@ -264,126 +336,25 @@ export default function ApplePayFeature() {
                     </div>
                   )}
 
-                  {/* Apple Pay iframe - Front and center like Porto */}
-                  {iframeUrl ? (
-                    <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mb-4">
-                      <iframe
-                        src={iframeUrl}
-                        className="w-full h-[500px] border-0"
-                        title="Apple Pay Purchase"
-                        allow="payment"
-                        onLoad={() => {
-                          console.log('Apple Pay iframe loaded');
-                          setEventLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Apple Pay ready`]);
-                          setIsLoading(false);
-                        }}
-                        onError={(e) => {
-                          console.error('Iframe error:', e);
-                          setError('Failed to load Apple Pay. Try refreshing.');
-                          setIsLoading(false);
-                        }}
-                      />
-                    </div>
-                  ) : !isLoading ? (
-                    /* Show form when iframe is not loaded and not loading */
-                    <div className="space-y-4">
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                        Enter your details to continue with Apple Pay
-                      </p>
-
-                      {/* Email */}
-                      <div>
-                        <label className="block text-sm font-medium mb-2">
-                          Email (Verified) *
-                        </label>
-                        <input
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="user@example.com"
-                          className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-
-                      {/* Phone Number */}
-                      <div>
-                        <label className="block text-sm font-medium mb-2">
-                          Phone Number (US) *
-                        </label>
-                        <input
-                          type="tel"
-                          value={phoneNumber}
-                          onChange={(e) => setPhoneNumber(e.target.value)}
-                          placeholder="+12345678901"
-                          className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">Format: +1XXXXXXXXXX</p>
-                      </div>
-
-                      {/* Destination Address */}
-                      <div>
-                        <label className="block text-sm font-medium mb-2">
-                          Destination Address *
-                        </label>
-                        <input
-                          type="text"
-                          value={destinationAddress}
-                          onChange={(e) => setDestinationAddress(e.target.value)}
-                          placeholder="0x..."
-                          className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                        />
-                      </div>
-
-                      {/* Amount */}
-                      <div>
-                        <label className="block text-sm font-medium mb-2">
-                          Amount (USD)
-                        </label>
-                        <input
-                          type="number"
-                          value={amount}
-                          onChange={(e) => setAmount(e.target.value)}
-                          className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-
-                      {/* Asset */}
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Asset</label>
-                        <select
-                          value={asset}
-                          onChange={(e) => setAsset(e.target.value)}
-                          className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="USDC">USDC</option>
-                          <option value="ETH">ETH</option>
-                          <option value="BTC">BTC</option>
-                        </select>
-                      </div>
-
-                      {/* Network */}
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Network</label>
-                        <select
-                          value={network}
-                          onChange={(e) => setNetwork(e.target.value)}
-                          className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="base">Base</option>
-                          <option value="ethereum">Ethereum</option>
-                          <option value="polygon">Polygon</option>
-                        </select>
-                      </div>
-
-                      <button
-                        onClick={handleCreateOrder}
-                        disabled={isLoading || !destinationAddress}
-                        className="w-full bg-black dark:bg-white text-white dark:text-black font-semibold py-4 px-6 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-100 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                      >
-                        {isLoading ? "Creating Order..." : "Continue with Apple Pay"}
-                      </button>
-                    </div>
-                  ) : null}
+                  {/* Apple Pay iframe */}
+                  <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mb-4">
+                    <iframe
+                      src={iframeUrl}
+                      className="w-full h-[500px] border-0"
+                      title="Apple Pay Purchase"
+                      allow="payment"
+                      onLoad={() => {
+                        console.log('Apple Pay iframe loaded');
+                        setEventLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Apple Pay ready`]);
+                        setIsLoading(false);
+                      }}
+                      onError={(e) => {
+                        console.error('Iframe error:', e);
+                        setError('Failed to load Apple Pay. Try refreshing.');
+                        setIsLoading(false);
+                      }}
+                    />
+                  </div>
 
                   {/* Back button */}
                   <button

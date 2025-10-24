@@ -250,9 +250,11 @@ export async function POST(request: NextRequest) {
     // Domain parameter is required for iframe embedding (like Porto's implementation)
     // For HTTPS production domains: include domain to enable iframe embedding
     // For localhost: skip domain to avoid "not allowlisted" errors (iframe won't work anyway)
+    // IMPORTANT: Domain should NOT include the protocol (https://) per CDP API documentation
     if (origin && origin.startsWith('https://')) {
-      requestBody.domain = origin;
-      logger.info('Including domain for iframe embedding', { domain: origin });
+      // Remove the protocol from the domain
+      requestBody.domain = origin.replace('https://', '');
+      logger.info('Including domain for iframe embedding', { domain: requestBody.domain });
     } else if (origin && origin.includes('localhost')) {
       logger.info('Skipping domain for localhost (use new tab option for testing)', { origin });
     } else {
