@@ -310,10 +310,11 @@ export default function ApplePayFeature() {
                   <input
                     type="text"
                     value={destinationAddress}
-                    onChange={(e) => setDestinationAddress(e.target.value)}
+                    readOnly
                     placeholder="0x..."
-                    className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                    className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 cursor-not-allowed font-mono text-sm"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Using your connected wallet address</p>
                 </div>
 
                 {/* Amount */}
@@ -628,10 +629,11 @@ export default function ApplePayFeature() {
                   <input
                     type="text"
                     value={destinationAddress}
-                    onChange={(e) => setDestinationAddress(e.target.value)}
+                    readOnly
                     placeholder="0x..."
-                    className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                    className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 cursor-not-allowed font-mono text-sm"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Using your connected wallet address</p>
                 </div>
 
                 {/* Amount */}
