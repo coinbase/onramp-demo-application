@@ -67,13 +67,24 @@ export default function ApplePayFeature() {
       // Only accept messages from Coinbase
       if (!event.origin.includes('coinbase.com')) return;
 
-      // Check if event.data has the expected structure
-      if (!event.data || typeof event.data !== 'object') return;
-      
-      const { eventName, data } = event.data;
-      
+      // Parse the event data if it's a string (Coinbase sends JSON strings)
+      let parsedData;
+      try {
+        parsedData = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+      } catch (e) {
+        console.error('Failed to parse postMessage data:', e);
+        return;
+      }
+
+      // Check if parsedData has the expected structure
+      if (!parsedData || typeof parsedData !== 'object') return;
+
+      const { eventName, data } = parsedData;
+
       // Skip if no eventName
       if (!eventName) return;
+
+      console.log('✅ Apple Pay Event:', eventName, data);
       
       const timestamp = new Date().toLocaleTimeString();
       const logMessage = `[${timestamp}] ${eventName}${data?.errorMessage ? ` - ${data.errorMessage}` : ''}${data?.errorCode ? ` (${data.errorCode})` : ''}`;
@@ -299,10 +310,11 @@ export default function ApplePayFeature() {
                   <input
                     type="text"
                     value={destinationAddress}
-                    onChange={(e) => setDestinationAddress(e.target.value)}
+                    readOnly
                     placeholder="0x..."
-                    className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                    className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 cursor-not-allowed font-mono text-sm"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Using your connected wallet address</p>
                 </div>
 
                 {/* Amount */}
@@ -617,10 +629,11 @@ export default function ApplePayFeature() {
                   <input
                     type="text"
                     value={destinationAddress}
-                    onChange={(e) => setDestinationAddress(e.target.value)}
+                    readOnly
                     placeholder="0x..."
-                    className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                    className="w-full px-4 py-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 cursor-not-allowed font-mono text-sm"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Using your connected wallet address</p>
                 </div>
 
                 {/* Amount */}
