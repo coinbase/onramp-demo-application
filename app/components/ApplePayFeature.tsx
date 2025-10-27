@@ -67,13 +67,24 @@ export default function ApplePayFeature() {
       // Only accept messages from Coinbase
       if (!event.origin.includes('coinbase.com')) return;
 
-      // Check if event.data has the expected structure
-      if (!event.data || typeof event.data !== 'object') return;
-      
-      const { eventName, data } = event.data;
-      
+      // Parse the event data if it's a string (Coinbase sends JSON strings)
+      let parsedData;
+      try {
+        parsedData = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+      } catch (e) {
+        console.error('Failed to parse postMessage data:', e);
+        return;
+      }
+
+      // Check if parsedData has the expected structure
+      if (!parsedData || typeof parsedData !== 'object') return;
+
+      const { eventName, data } = parsedData;
+
       // Skip if no eventName
       if (!eventName) return;
+
+      console.log('✅ Apple Pay Event:', eventName, data);
       
       const timestamp = new Date().toLocaleTimeString();
       const logMessage = `[${timestamp}] ${eventName}${data?.errorMessage ? ` - ${data.errorMessage}` : ''}${data?.errorCode ? ` (${data.errorCode})` : ''}`;
