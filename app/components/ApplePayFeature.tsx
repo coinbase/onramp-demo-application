@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAccount } from "wagmi";
 import confetti from "canvas-confetti";
 
@@ -38,6 +38,22 @@ export default function ApplePayFeature() {
   const [transactionDetails, setTransactionDetails] = useState<TransactionDetails | null>(null);
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
 
+  // Use refs to avoid useEffect dependencies that cause re-renders
+  const amountRef = useRef(amount);
+  const assetRef = useRef(asset);
+  const networkRef = useRef(network);
+  const destinationAddressRef = useRef(destinationAddress);
+  const currentOrderIdRef = useRef(currentOrderId);
+
+  // Update refs when values change
+  useEffect(() => {
+    amountRef.current = amount;
+    assetRef.current = asset;
+    networkRef.current = network;
+    destinationAddressRef.current = destinationAddress;
+    currentOrderIdRef.current = currentOrderId;
+  }, [amount, asset, network, destinationAddress, currentOrderId]);
+
   // Update destination address when wallet connects
   useEffect(() => {
     if (address) {
@@ -46,8 +62,8 @@ export default function ApplePayFeature() {
   }, [address]);
 
   // Listen for post message events from the iframe
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
+  // Use useCallback to create a stable handler that won't cause re-renders
+  const handleMessage = useCallback((event: MessageEvent) => {
       // Only accept messages from Coinbase
       if (!event.origin.includes('coinbase.com')) return;
 
@@ -72,12 +88,13 @@ export default function ApplePayFeature() {
       } else if (eventName === 'onramp_api.polling_success') {
         setError(null);
         // Payment successful! Show success message in the same modal
+        // Use refs to get current values without causing re-renders
         setTransactionDetails({
-          amount,
-          asset,
-          network,
-          destinationAddress,
-          orderId: currentOrderId || undefined,
+          amount: amountRef.current,
+          asset: assetRef.current,
+          network: networkRef.current,
+          destinationAddress: destinationAddressRef.current,
+          orderId: currentOrderIdRef.current || undefined,
           txHash: data?.txHash || undefined,
         });
         setShowSuccessModal(true);
@@ -110,11 +127,13 @@ export default function ApplePayFeature() {
           }
         }());
       }
-    };
+    }, []); // Empty dependency array - handler is stable and won't re-create
 
+  // Set up the event listener once
+  useEffect(() => {
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [amount, asset, network, destinationAddress, currentOrderId]);
+  }, [handleMessage]); // Only depends on the stable handleMessage function
 
   const handleCreateOrder = async () => {
     setError(null);
