@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { WalletDefault } from "@coinbase/onchainkit/wallet";
+import { EmbeddedWalletAuth } from "./EmbeddedWalletAuth";
 
 export function Header() {
   const pathname = usePathname();
@@ -91,7 +91,7 @@ export function Header() {
             </NavLink>
 
             <div className="ml-4">
-              <WalletDefault />
+              <EmbeddedWalletAuth />
             </div>
           </nav>
 
@@ -183,7 +183,7 @@ export function Header() {
             </MobileNavLink>
 
             <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-              <WalletDefault />
+              <EmbeddedWalletAuth />
             </div>
           </nav>
         </div>

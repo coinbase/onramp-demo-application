@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAccount, useConnect } from "wagmi";
+import { useCoinbaseRampTransaction } from "../contexts/CoinbaseRampTransactionContext";
 import { generateOfframpURL } from "../utils/rampUtils";
 import {
   fetchSellConfig,
@@ -195,8 +196,13 @@ const US_STATES = [
 ];
 
 export default function OfframpFeature() {
-  const { address, isConnected } = useAccount();
+  const { address: wagmiAddress, isConnected: wagmiConnected } = useAccount();
   const { connect, connectors } = useConnect();
+  const { rampTransaction, authenticated } = useCoinbaseRampTransaction();
+  
+  // Use embedded wallet address if available, otherwise fall back to wagmi wallet
+  const address = rampTransaction?.wallet || wagmiAddress;
+  const isConnected = authenticated || wagmiConnected;
   const [selectedAsset, setSelectedAsset] = useState("USDC");
   const [amount, setAmount] = useState("10");
   const [selectedNetwork, setSelectedNetwork] = useState("base");

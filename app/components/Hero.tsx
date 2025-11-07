@@ -150,6 +150,30 @@ export default function Hero() {
                   </Link>
                 </div>
               </div>
+
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-6 shadow-md hover:shadow-lg transition-all border-2 border-purple-200 dark:border-purple-700 flex flex-col h-full">
+                <div className="flex-grow">
+                  <div className="inline-block px-2 py-1 bg-purple-600 text-white text-xs font-bold rounded mb-2">
+                    FEATURED
+                  </div>
+                  <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">
+                    Embedded Wallets 🔐
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-300">
+                    Seamless wallet creation with just an email. No seed phrases, no downloads—just sign in and start transacting.
+                  </p>
+                </div>
+                <div className="mt-6">
+                  <a
+                    href="https://docs.cdp.coinbase.com/embedded-wallets/welcome"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 font-medium inline-flex items-center border border-purple-300 dark:border-purple-600 rounded-lg px-4 py-2 transition-all hover:bg-purple-50 dark:hover:bg-purple-900/20 bg-white dark:bg-gray-800"
+                  >
+                    Learn More <span className="ml-2">→</span>
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
         </div>

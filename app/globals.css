@@ -26,3 +26,37 @@ body {
     text-wrap: balance;
   }
 }
+
+/* CDP modal z-index fixes */
+/* Ensure all portal containers appear above header (z-50) */
+body > div[data-radix-portal],
+div[data-radix-portal],
+[data-radix-popper-content-wrapper] {
+  z-index: 9999 !important;
+}
+
+/* Ensure modal overlay covers entire screen including header */
+[data-radix-dialog-overlay],
+div[role="dialog"] + div {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9998 !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+}
+
+/* Ensure modal content appears above overlay and header */
+[data-radix-dialog-content],
+div[role="dialog"] {
+  position: fixed !important;
+  z-index: 9999 !important;
+}
+
+/* Specifically target CDP SDK modals */
+div[class*="modal"],
+div[class*="Modal"],
+div[class*="dialog"],
+div[class*="Dialog"] {
+  z-index: 9999 !important;
+}

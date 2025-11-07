@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAccount } from "wagmi";
+import { useCoinbaseRampTransaction } from "../contexts/CoinbaseRampTransactionContext";
 import confetti from "canvas-confetti";
 
 interface ApplePayOrder {
@@ -20,7 +21,12 @@ interface TransactionDetails {
 }
 
 export default function ApplePayFeature() {
-  const { address, isConnected } = useAccount();
+  const { address: wagmiAddress, isConnected: wagmiConnected } = useAccount();
+  const { rampTransaction, authenticated } = useCoinbaseRampTransaction();
+  
+  // Use embedded wallet address if available, otherwise fall back to wagmi wallet
+  const address = rampTransaction?.wallet || wagmiAddress;
+  const isConnected = authenticated || wagmiConnected;
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");

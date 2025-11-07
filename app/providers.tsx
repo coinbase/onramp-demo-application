@@ -1,6 +1,7 @@
 'use client';
 
 import { OnchainKitProvider } from '@coinbase/onchainkit';
+import { CDPReactProvider } from '@coinbase/cdp-react';
 import { ReactNode } from 'react';
 import { base } from 'wagmi/chains';
 import { CoinbaseRampTransactionProvider } from './contexts/CoinbaseRampTransactionContext';
@@ -40,21 +41,31 @@ export function Providers({ children }: { children: ReactNode }) {
   }
 
   return (
-    <CoinbaseRampTransactionProvider>
-      <OnchainKitProvider
-        chain={base}
-        projectId={projectId}
-        apiKey={apiKey} // OnchainKit Client API Key - required for Fund components
-        config={{
-          appearance: {
-            name: projectName,
-            theme: 'default',
-            mode: 'light',
-          },
-        }}
-      >
-        {children}
-      </OnchainKitProvider>
-    </CoinbaseRampTransactionProvider>
+    <CDPReactProvider
+      config={{
+        projectId: projectId,
+        ethereum: {
+          createOnLogin: 'eoa' // Create EOA wallet on login
+        },
+        appName: projectName
+      }}
+    >
+      <CoinbaseRampTransactionProvider>
+        <OnchainKitProvider
+          chain={base}
+          projectId={projectId}
+          apiKey={apiKey} // OnchainKit Client API Key - required for Fund components
+          config={{
+            appearance: {
+              name: projectName,
+              theme: 'default',
+              mode: 'light',
+            },
+          }}
+        >
+          {children}
+        </OnchainKitProvider>
+      </CoinbaseRampTransactionProvider>
+    </CDPReactProvider>
   );
 }

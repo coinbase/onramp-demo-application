@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useAccount } from "wagmi";
+import { useCoinbaseRampTransaction } from "../contexts/CoinbaseRampTransactionContext";
 import { useSessionToken } from "../hooks/useSessionToken";
 import { getOnrampBuyUrl } from "@coinbase/onchainkit/fund";
 
@@ -32,7 +33,12 @@ export function FundCardWithSessionToken({
   presetAmountInputs = ["10", "20", "50"] as const,
   defaultNetwork = "base"
 }: FundCardWithSessionTokenProps) {
-  const { address, isConnected } = useAccount();
+  const { address: wagmiAddress, isConnected: wagmiConnected } = useAccount();
+  const { rampTransaction, authenticated } = useCoinbaseRampTransaction();
+  
+  // Use embedded wallet address if available, otherwise fall back to wagmi wallet
+  const address = rampTransaction?.wallet || wagmiAddress;
+  const isConnected = authenticated || wagmiConnected;
   const [amount, setAmount] = useState(presetAmountInputs[1]); // Default to middle preset
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
