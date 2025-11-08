@@ -6,6 +6,7 @@ A Next.js application demonstrating the integration of Coinbase's On-ramp and Of
 
 - **Coinbase Onramp Integration**: Allows users to purchase crypto with fiat currency
 - **Coinbase Offramp Integration**: Enables users to convert crypto back to fiat
+  - ⚠️ **Important**: Offramp requires a Coinbase account with linked bank details. Guest checkout is NOT supported for fiat withdrawals.
 - **Apple Pay Onramp**: Fast, native Apple Pay integration with iframe embedding
 - **Secure Initialization**: Support for session tokens for enhanced security
 - **Wallet Connection**: Integrates with Web3 wallets via WalletConnect
@@ -203,6 +204,71 @@ Session tokens are short-lived, one-time-use tokens that authenticate users and 
 - Session tokens expire quickly and can only be used once
 - When using session tokens, you don't need to pass `appId`, `addresses`, or `assets` in the URL
 - The secure initialization option is available in both Onramp and Offramp features
+
+## Offramp Implementation
+
+This demo uses the **One-Click-Sell Offramp approach** via the [Sell Quote API](https://docs.cdp.coinbase.com/onramp-&-offramp/offramp-apis/generating-quotes). When you include `source_address`, `redirect_url`, and `partner_user_id` in the quote request, the API returns a ready-to-use URL with all parameters pre-filled (sessionToken, defaultAsset, presetFiatAmount, quoteId, defaultCashoutMethod).
+
+Users are taken directly to the order preview screen on Coinbase Pay!
+
+### Dynamic Configuration via CDP APIs
+
+The offramp UI now dynamically loads:
+- **Supported countries and payment methods** via [Sell Config API](https://docs.cdp.coinbase.com/api-reference/rest-api/onramp-offramp/get-sell-config) (`GET /v1/sell/config`)
+- **Available crypto assets and fiat currencies** via [Sell Options API](https://docs.cdp.coinbase.com/api-reference/rest-api/onramp-offramp/get-sell-options) (`GET /v1/sell/options`)
+
+This ensures dropdown options always reflect what Coinbase actually supports in each country. Check the browser console for confirmation of API data loading vs. fallback data.
+
+### Offramp Requirements
+
+⚠️ **CRITICAL: Coinbase Account Required for Offramp**
+
+Unlike onramp (which supports guest checkout), **offramp transactions require users to have a Coinbase account with linked bank details**. This is a Coinbase requirement, not a limitation of this demo app.
+
+### What Users Need for Offramp
+
+To successfully complete an offramp (cash-out) transaction, users MUST have:
+
+1. **Active Coinbase Account**
+   - Sign up at [coinbase.com](https://www.coinbase.com)
+   - Guest checkout is NOT supported for fiat withdrawals
+
+2. **Identity Verification**
+   - Complete Coinbase's KYC (Know Your Customer) verification
+   - This is required by financial regulations
+
+3. **Linked Payment Method**
+   - For ACH transfers: Link a US bank account in Coinbase
+   - For PayPal: Connect PayPal account in Coinbase settings
+   - For SEPA: Link European bank account (Europe only)
+
+4. **Crypto Assets**
+   - Have the cryptocurrency you want to sell in your connected wallet
+   - Assets must be on the correct blockchain network
+   - Sufficient balance to cover the transaction amount
+
+### Common Reasons Offramp May Fail
+
+If clicking "Cash Out Now" doesn't complete the transaction, it's usually because:
+
+- ❌ User doesn't have a Coinbase account
+- ❌ Bank account/payment method not linked in Coinbase
+- ❌ Identity verification incomplete
+- ❌ Insufficient crypto balance in wallet
+- ❌ Crypto is on wrong network
+- ❌ Transaction was cancelled by user
+
+### Testing Offramp
+
+To test offramp in this demo:
+
+1. Create a Coinbase account if you don't have one
+2. Complete identity verification
+3. Link your bank account or PayPal
+4. Ensure you have crypto (USDC, ETH, etc.) in your connected wallet
+5. Make sure the asset is on the network you selected
+
+**Note**: This is a real transaction if all requirements are met. Only test with amounts you're comfortable cashing out.
 
 ## Integration Options
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useAccount } from "wagmi";
 import { useCoinbaseRampTransaction } from "../contexts/CoinbaseRampTransactionContext";
 import confetti from "canvas-confetti";
 
@@ -21,12 +20,12 @@ interface TransactionDetails {
 }
 
 export default function ApplePayFeature() {
-  const { address: wagmiAddress, isConnected: wagmiConnected } = useAccount();
   const { rampTransaction, authenticated } = useCoinbaseRampTransaction();
-  
-  // Use embedded wallet address if available, otherwise fall back to wagmi wallet
-  const address = rampTransaction?.wallet || wagmiAddress;
-  const isConnected = authenticated || wagmiConnected;
+
+  // Only use embedded wallet address - do not fall back to wagmi wallet
+  // This ensures users must connect with embedded wallet for Apple Pay
+  const address = authenticated ? rampTransaction?.wallet : undefined;
+  const isConnected = authenticated && !!rampTransaction?.wallet;
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -260,8 +259,13 @@ export default function ApplePayFeature() {
 
             {!isConnected ? (
               <div className="text-center py-12">
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg mb-4 text-left">
+                  <p className="text-sm text-blue-800">
+                    <strong>Note:</strong> Apple Pay requires CDP Embedded Wallet. Please sign in with your embedded wallet to continue.
+                  </p>
+                </div>
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  Please connect your wallet to continue
+                  Please connect your embedded wallet to use Apple Pay
                 </p>
               </div>
             ) : (

@@ -107,12 +107,10 @@ export default function FundPage() {
 
               <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-8 max-w-3xl mx-auto">
                 <p className="text-blue-700 dark:text-blue-300 text-sm md:text-base">
-                  <span className="font-medium">Note:</span> Wallet connection
-                  is required for Fund features to work. Connect your wallet to
-                  test the functionality.
+                  <span className="font-medium">Note:</span> Fund features require CDP Embedded Wallet.
+                  Please sign in with your embedded wallet to test the functionality.
                 </p>
               </div>
-
               <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-8 max-w-3xl mx-auto">
                 <p className="text-red-700 dark:text-red-300 text-sm md:text-base">
                   <span className="font-medium">Important:</span> Solana is not
@@ -410,8 +408,10 @@ export default function FundPage() {
                             We use a custom implementation that generates session tokens server-side. */}
                       </div>
                     ) : (
-                      <div className="p-4 border rounded-lg bg-yellow-50 text-yellow-700">
-                        Please connect your wallet to use the Fund Card
+                      <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
+                        <p className="text-sm text-blue-800 text-center">
+                          <strong>Note:</strong> Please sign in with your CDP Embedded Wallet to use the Fund Card
+                        </p>
                       </div>
                     )}
                   </div>

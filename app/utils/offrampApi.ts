@@ -3,6 +3,22 @@
  */
 
 // Types for Sell Config API response
+// Based on CDP API: https://docs.cdp.coinbase.com/api-reference/rest-api/onramp-offramp/get-sell-config
+export interface PaymentMethodType {
+  id: string; // Payment method enum: ACH_BANK_ACCOUNT, PAYPAL, FIAT_WALLET, RTP, APPLE_PAY, etc.
+}
+
+export interface SupportedCountry {
+  id: string; // ISO 3166-1 two-letter country code
+  payment_methods: PaymentMethodType[];
+  subdivisions?: string[]; // Only returned for US (state codes)
+}
+
+export interface SellConfigResponse {
+  countries: SupportedCountry[];
+}
+
+// Legacy types for backward compatibility with UI
 export interface CashoutMethod {
   id: string;
   name: string;
@@ -16,11 +32,39 @@ export interface Country {
   supported_states?: string[];
 }
 
-export interface SellConfigResponse {
-  countries: Country[];
+// Types for Sell Options API response (RAW from CDP API)
+export interface ApiPaymentMethodLimit {
+  id: string; // Payment method type: CARD, ACH_BANK_ACCOUNT, etc.
+  min: string;
+  max: string;
 }
 
-// Types for Sell Options API response
+export interface ApiFiatCurrency {
+  id: string; // e.g., "USD"
+  limits: ApiPaymentMethodLimit[];
+}
+
+export interface ApiNetwork {
+  name: string; // e.g., "ethereum"
+  display_name: string; // e.g., "Ethereum"
+  chain_id?: number;
+  contract_address?: string;
+}
+
+export interface ApiCryptoAsset {
+  id: string; // Unique identifier
+  symbol: string; // e.g., "USDC"
+  name: string; // e.g., "USD Coin"
+  networks: ApiNetwork[];
+  icon_url?: string;
+}
+
+export interface ApiSellOptionsResponse {
+  cashout_currencies: ApiFiatCurrency[];
+  sell_currencies: ApiCryptoAsset[];
+}
+
+// UI-friendly types (transformed from API response)
 export interface CurrencyLimit {
   min: string;
   max: string;
@@ -51,6 +95,82 @@ export interface SellOptionsResponse {
   cashout_currencies: FiatCurrency[];
   sell_currencies: CryptoAsset[];
 }
+
+// Helper function to map payment method IDs to friendly names
+export const paymentMethodNames: Record<string, { name: string; description: string }> = {
+  ACH_BANK_ACCOUNT: { name: "Bank Transfer (ACH)", description: "US only, 1-3 business days" },
+  PAYPAL: { name: "PayPal", description: "Available in select countries" },
+  FIAT_WALLET: { name: "Coinbase Fiat Wallet", description: "Instant transfer to your Coinbase account" },
+  RTP: { name: "Real-Time Payments (RTP)", description: "US only, instant" },
+  APPLE_PAY: { name: "Apple Pay", description: "Available in select countries" },
+  CARD: { name: "Debit/Credit Card", description: "Available in select countries" },
+  CRYPTO_ACCOUNT: { name: "Crypto Account", description: "Coinbase crypto account" },
+  GUEST_CHECKOUT_CARD: { name: "Guest Checkout Card", description: "Card payment without account" },
+  GUEST_CHECKOUT_APPLE_PAY: { name: "Guest Checkout Apple Pay", description: "Apple Pay without account" },
+  UNSPECIFIED: { name: "Unspecified", description: "Payment method not specified" },
+};
+
+// Helper function to transform CDP Sell Config API response to UI-friendly format
+export function transformSellConfigResponse(apiResponse: SellConfigResponse): { countries: Country[] } {
+  return {
+    countries: apiResponse.countries.map((country) => ({
+      code: country.id,
+      name: countryNames[country.id] || country.id,
+      cashout_methods: country.payment_methods.map((pm) => ({
+        id: pm.id,
+        name: paymentMethodNames[pm.id]?.name || pm.id,
+        description: paymentMethodNames[pm.id]?.description,
+      })),
+      supported_states: country.subdivisions,
+    })),
+  };
+}
+
+// Helper function to transform CDP Sell Options API response to UI-friendly format
+export function transformSellOptionsResponse(apiResponse: ApiSellOptionsResponse): SellOptionsResponse {
+  return {
+    // Transform fiat currencies
+    cashout_currencies: apiResponse.cashout_currencies.map((currency) => ({
+      code: currency.id,
+      name: currencyNames[currency.id] || currency.id,
+      cashout_methods: currency.limits.map((limit) => ({
+        id: limit.id,
+        name: paymentMethodNames[limit.id]?.name || limit.id,
+        limits: {
+          [currency.id]: {
+            min: limit.min,
+            max: limit.max,
+          },
+        },
+      })),
+    })),
+    // Transform crypto assets
+    sell_currencies: apiResponse.sell_currencies.map((asset) => ({
+      code: asset.symbol, // Use symbol (e.g., "USDC") as the code
+      name: asset.name,
+      networks: asset.networks.map((network) => ({
+        id: network.name, // Use name (e.g., "ethereum") as the id
+        name: network.display_name, // Use display_name (e.g., "Ethereum") for display
+      })),
+    })),
+  };
+}
+
+// Helper mapping for currency names
+const currencyNames: Record<string, string> = {
+  USD: "US Dollar",
+  EUR: "Euro",
+  GBP: "British Pound",
+  CAD: "Canadian Dollar",
+  AUD: "Australian Dollar",
+  JPY: "Japanese Yen",
+  CHF: "Swiss Franc",
+  NZD: "New Zealand Dollar",
+  SGD: "Singapore Dollar",
+  HKD: "Hong Kong Dollar",
+  MXN: "Mexican Peso",
+  BRL: "Brazilian Real",
+};
 
 // Country data with names
 export const countryNames: Record<string, string> = {
@@ -83,12 +203,34 @@ export const countryNames: Record<string, string> = {
 };
 
 /**
- * Fetches the list of supported countries and cashout methods
+ * Fetches the list of supported countries and cashout methods from CDP API
+ * API Docs: https://docs.cdp.coinbase.com/onramp/v1/sell/config
+ * Returns UI-friendly format with country names and payment method descriptions
  */
-export async function fetchSellConfig(): Promise<SellConfigResponse> {
+export async function fetchSellConfig(): Promise<{ countries: Country[] }> {
   try {
-    // In a real implementation, you would make an actual API call
-    // For demo purposes, we'll return mock data
+    // Call the real CDP Sell Config API
+    const response = await fetch('/api/sell-config');
+    
+    if (!response.ok) {
+      console.warn('Failed to fetch sell config from API, using fallback data');
+      throw new Error('API call failed');
+    }
+    
+    const apiData: SellConfigResponse = await response.json();
+    // Transform CDP API format to UI-friendly format
+    const transformedData = transformSellConfigResponse(apiData);
+    
+    console.log('✅ Sell config loaded from CDP API:', {
+      countryCount: transformedData.countries.length,
+      countries: transformedData.countries.map(c => c.code).join(', ')
+    });
+    
+    return transformedData;
+  } catch (error) {
+    console.error("⚠️ Error fetching sell config from CDP API, using fallback data:", error);
+    console.warn("⚠️ Using mock data for countries and payment methods. Real API data may differ.");
+    // Fallback to mock data if API fails
     return {
       countries: [
         {
@@ -98,6 +240,7 @@ export async function fetchSellConfig(): Promise<SellConfigResponse> {
             { id: "ACH_BANK_ACCOUNT", name: "Bank Transfer (ACH)", description: "US only, 1-3 business days" },
             { id: "PAYPAL", name: "PayPal", description: "Available in select countries" },
             { id: "FIAT_WALLET", name: "Coinbase Fiat Wallet", description: "Instant transfer to your Coinbase account" },
+            { id: "RTP", name: "Real-Time Payments (RTP)", description: "US only, instant" },
           ],
           supported_states: [
             "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
@@ -169,26 +312,58 @@ export async function fetchSellConfig(): Promise<SellConfigResponse> {
           code: "AU",
           name: "Australia",
           cashout_methods: [
-            { id: "PAYID", name: "PayID", description: "1-3 business days" },
             { id: "PAYPAL", name: "PayPal", description: "Available in select countries" },
             { id: "FIAT_WALLET", name: "Coinbase Fiat Wallet", description: "Instant transfer to your Coinbase account" },
           ],
         },
       ],
     };
-  } catch (error) {
-    console.error("Error fetching sell config:", error);
-    throw error;
   }
 }
 
 /**
- * Fetches the available options for selling crypto
+ * Fetches the available options for selling crypto from CDP API
+ * API Docs: https://docs.cdp.coinbase.com/onramp/v1/sell/options
  */
 export async function fetchSellOptions(country: string, subdivision?: string): Promise<SellOptionsResponse> {
   try {
-    // In a real implementation, you would make an actual API call with the country and subdivision
-    // For demo purposes, we'll return mock data
+    // Call the real CDP Sell Options API
+    const params = new URLSearchParams({ country });
+    if (subdivision) {
+      params.append('subdivision', subdivision);
+    }
+
+    console.log('📡 Calling Sell Options API:', { country, subdivision });
+    const response = await fetch(`/api/sell-options?${params.toString()}`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Sell Options API failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+      });
+      throw new Error(`API call failed: ${response.status} ${errorText}`);
+    }
+
+    const apiData: ApiSellOptionsResponse = await response.json();
+    console.log('📦 Raw API response:', apiData);
+
+    // Transform CDP API response to UI-friendly format
+    const transformedData = transformSellOptionsResponse(apiData);
+
+    console.log('✅ Sell options loaded from CDP API:', {
+      sellCurrenciesCount: transformedData.sell_currencies?.length || 0,
+      cashoutCurrenciesCount: transformedData.cashout_currencies?.length || 0,
+      assets: transformedData.sell_currencies.map(a => a.code).join(', '),
+      cashoutCurrencies: transformedData.cashout_currencies.map(c => c.code).join(', '),
+    });
+
+    return transformedData;
+  } catch (error) {
+    console.error("⚠️ Error fetching sell options from CDP API, using fallback data:", error);
+    console.warn("⚠️ Using mock data for assets and cashout methods. Real API data may differ.");
+    // Fallback to mock data if API fails
     return {
       cashout_currencies: [
         {
@@ -214,6 +389,13 @@ export async function fetchSellOptions(country: string, subdivision?: string): P
               name: "Coinbase Fiat Wallet",
               limits: {
                 USD: { min: "1", max: "50000" },
+              },
+            },
+            {
+              id: "RTP",
+              name: "Real-Time Payments (RTP)",
+              limits: {
+                USD: { min: "10", max: "5000" },
               },
             },
           ],
@@ -424,8 +606,5 @@ export async function fetchSellOptions(country: string, subdivision?: string): P
         },
       ],
     };
-  } catch (error) {
-    console.error("Error fetching sell options:", error);
-    throw error;
   }
 }

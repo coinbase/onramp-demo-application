@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { useAccount, useConnect } from "wagmi";
 import { useCoinbaseRampTransaction } from "../contexts/CoinbaseRampTransactionContext";
 import { generateOnrampURL } from "../utils/rampUtils";
 import {
@@ -16,7 +15,6 @@ import {
 } from "../utils/onrampApi";
 import GeneratedLinkModal from "./GeneratedLinkModal";
 import { fetchCryptoPrices } from "../utils/priceUtils";
-import { WalletDefault } from "@coinbase/onchainkit/wallet";
 
 // Define payment method descriptions
 const PAYMENT_METHOD_DESCRIPTIONS: Record<string, string> = {
@@ -63,14 +61,6 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 const getCurrencySymbol = (currencyCode: string): string => {
   return CURRENCY_SYMBOLS[currencyCode] || currencyCode;
 };
-
-// Create an array from countryNames for the dropdown
-const countryList = Object.entries(countryNames)
-  .map(([code, name]) => ({
-    code,
-    name,
-  }))
-  .sort((a, b) => a.name.localeCompare(b.name));
 
 // Define asset-network compatibility mapping
 const assetNetworkMap: Record<string, string[]> = {
@@ -167,13 +157,12 @@ const US_STATES = [
 ];
 
 export default function OnrampFeature() {
-  const { address: wagmiAddress, isConnected: wagmiConnected } = useAccount();
-  const { connect, connectors } = useConnect();
   const { rampTransaction, authenticated } = useCoinbaseRampTransaction();
-  
-  // Use embedded wallet address if available, otherwise fall back to wagmi wallet
-  const address = rampTransaction?.wallet || wagmiAddress;
-  const isConnected = authenticated || wagmiConnected;
+
+  // Only use embedded wallet address - do not fall back to wagmi wallet
+  // This ensures users must connect with embedded wallet for onramp
+  const address = authenticated ? rampTransaction?.wallet : undefined;
+  const isConnected = authenticated && !!rampTransaction?.wallet;
   const [activeTab, setActiveTab] = useState<"api" | "url">("api");
   const [selectedAsset, setSelectedAsset] = useState("USDC");
   const [amount, setAmount] = useState("10");
@@ -190,27 +179,57 @@ export default function OnrampFeature() {
   const [useSecureInit, setUseSecureInit] = useState(true);
   const [isGeneratingToken, setIsGeneratingToken] = useState(false);
 
-  // Define supported payment methods
-  const paymentMethods = [
-    {
-      id: "CARD",
-      name: "Debit Card",
-      description: "Available in 90+ countries",
-    },
-    {
-      id: "ACH_BANK_ACCOUNT",
-      name: "Bank Transfer (ACH)",
-      description: "US only",
-    },
-    { id: "APPLE_PAY", name: "Apple Pay", description: "US only" },
-  ];
+  // API data state
+  const [apiCountries, setApiCountries] = useState<Country[]>([]);
+  const [apiPaymentMethods, setApiPaymentMethods] = useState<{ id: string; name: string; description?: string }[]>([]);
+  const [apiPurchaseCurrencies, setApiPurchaseCurrencies] = useState<PurchaseCurrency[]>([]);
+  const [apiPaymentCurrencies, setApiPaymentCurrencies] = useState<PaymentCurrency[]>([]);
+  const [isLoadingConfig, setIsLoadingConfig] = useState(false);
+  const [isLoadingOptions, setIsLoadingOptions] = useState(false);
 
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(
-    paymentMethods[0].id
-  );
+  // Use API data if available, otherwise fallback to hardcoded data
+  const paymentMethods = useMemo(() => {
+    if (apiPaymentMethods.length > 0) {
+      return apiPaymentMethods;
+    }
+    // Fallback to hardcoded data
+    return [
+      {
+        id: "CARD",
+        name: "Debit Card",
+        description: "Available in 90+ countries",
+      },
+      {
+        id: "ACH_BANK_ACCOUNT",
+        name: "Bank Transfer (ACH)",
+        description: "US only",
+      },
+      { id: "APPLE_PAY", name: "Apple Pay", description: "US only" },
+    ];
+  }, [apiPaymentMethods]);
 
-  // Define supported assets (expanded list)
-  const assets = [
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("CARD");
+
+  // Use API data for assets if available, otherwise use hardcoded list
+  const assetsFromApi = useMemo(() => {
+    if (apiPurchaseCurrencies.length > 0) {
+      return apiPurchaseCurrencies.map((currency) => ({
+        symbol: currency.symbol,
+        name: currency.name,
+        price: cryptoPrices[currency.symbol] || 0,
+        networks: currency.networks
+      }));
+    }
+    return [];
+  }, [apiPurchaseCurrencies, cryptoPrices]);
+
+  // Define fallback supported assets list (used if API fails)
+  const assets = useMemo(() => {
+    if (assetsFromApi.length > 0) {
+      return assetsFromApi.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    // Fallback to hardcoded data
+    return [
     { symbol: "ETH", name: "Ethereum", price: cryptoPrices["ETH"] || 3500 },
     { symbol: "USDC", name: "USD Coin", price: cryptoPrices["USDC"] || 1 },
     { symbol: "BTC", name: "Bitcoin", price: cryptoPrices["BTC"] || 67000 },
@@ -252,9 +271,17 @@ export default function OnrampFeature() {
     { symbol: "SAND", name: "The Sandbox", price: cryptoPrices["SAND"] || 0.4 },
     { symbol: "TRX", name: "TRON", price: cryptoPrices["TRX"] || 0.1 },
   ].sort((a, b) => a.name.localeCompare(b.name));
+  }, [assetsFromApi, cryptoPrices]);
 
-  // Define supported networks (expanded list)
-  const networks = [
+  // Use API data for networks if available
+  const networks = useMemo(() => {
+    // Get networks from the selected asset's API data
+    const selectedAssetData = apiPurchaseCurrencies.find(c => c.symbol === selectedAsset);
+    if (selectedAssetData && selectedAssetData.networks.length > 0) {
+      return selectedAssetData.networks;
+    }
+    // Fallback to hardcoded list
+    return [
     { id: "ethereum", name: "Ethereum" },
     { id: "base", name: "Base" },
     { id: "optimism", name: "Optimism" },
@@ -287,9 +314,15 @@ export default function OnrampFeature() {
     { id: "unichain", name: "Unichain" },
     { id: "aptos", name: "Aptos" },
   ].sort((a, b) => a.name.localeCompare(b.name));
+  }, [apiPurchaseCurrencies, selectedAsset]);
 
-  // Define supported payment currencies (expanded list)
-  const paymentCurrencies = [
+  // Use API data for payment currencies if available
+  const paymentCurrencies = useMemo(() => {
+    if (apiPaymentCurrencies.length > 0) {
+      return apiPaymentCurrencies.map(c => ({ code: c.id, name: c.name }));
+    }
+    // Fallback to hardcoded list
+    return [
     { code: "USD", name: "US Dollar" },
     { code: "EUR", name: "Euro" },
     { code: "GBP", name: "British Pound" },
@@ -319,6 +352,67 @@ export default function OnrampFeature() {
     { code: "MYR", name: "Malaysian Ringgit" },
     { code: "PHP", name: "Philippine Peso" },
   ].sort((a, b) => a.name.localeCompare(b.name));
+  }, [apiPaymentCurrencies]);
+
+  // Use API countries list if available
+  const countryList = useMemo(() => {
+    if (apiCountries.length > 0) {
+      return apiCountries.map(c => ({ code: c.id, name: c.name })).sort((a, b) => a.name.localeCompare(b.name));
+    }
+    // Fallback to hardcoded list
+    return Object.entries(countryNames)
+      .map(([code, name]) => ({ code, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [apiCountries]);
+
+  // Fetch Buy Config on component mount
+  useEffect(() => {
+    const loadBuyConfig = async () => {
+      setIsLoadingConfig(true);
+      try {
+        const config = await fetchBuyConfig();
+        setApiCountries(config.countries);
+
+        // Set payment methods for the selected country
+        const selectedCountryData = config.countries.find(c => c.id === selectedCountry);
+        if (selectedCountryData) {
+          setApiPaymentMethods(selectedCountryData.paymentMethods);
+        }
+      } catch (error) {
+        console.error('Failed to load buy config:', error);
+      } finally {
+        setIsLoadingConfig(false);
+      }
+    };
+
+    loadBuyConfig();
+  }, []);
+
+  // Fetch Buy Options when country or subdivision changes
+  useEffect(() => {
+    const loadBuyOptions = async () => {
+      setIsLoadingOptions(true);
+      try {
+        const options = await fetchBuyOptions(selectedCountry, selectedState || undefined);
+        setApiPurchaseCurrencies(options.purchaseCurrencies);
+        setApiPaymentCurrencies(options.paymentCurrencies);
+
+        // Update payment methods for the selected country
+        const selectedCountryData = apiCountries.find(c => c.id === selectedCountry);
+        if (selectedCountryData) {
+          setApiPaymentMethods(selectedCountryData.paymentMethods);
+        }
+      } catch (error) {
+        console.error('Failed to load buy options:', error);
+      } finally {
+        setIsLoadingOptions(false);
+      }
+    };
+
+    if (selectedCountry) {
+      loadBuyOptions();
+    }
+  }, [selectedCountry, selectedState, apiCountries]);
 
   // Initialize network based on selected asset
   useEffect(() => {
@@ -369,8 +463,13 @@ export default function OnrampFeature() {
 
   // Generate session token
   const generateSessionToken = async () => {
+    if (!authenticated) {
+      alert("Please sign in with your CDP Embedded Wallet to use onramp");
+      return null;
+    }
+
     if (!address) {
-      alert("Please connect your wallet first");
+      alert("No wallet address found. Please ensure you're signed in with your embedded wallet");
       return null;
     }
 
@@ -422,8 +521,13 @@ export default function OnrampFeature() {
 
   // Generate one-time URL
   const handleGenerateUrl = async () => {
+    if (!authenticated && activeTab === "url") {
+      alert("Please sign in with your CDP Embedded Wallet to generate onramp URL");
+      return;
+    }
+
     if (!address && activeTab === "url") {
-      alert("Please connect your wallet first");
+      alert("No wallet address found. Please ensure you're signed in with your embedded wallet");
       return;
     }
 
@@ -454,8 +558,18 @@ export default function OnrampFeature() {
 
   // Handle direct onramp
   const handleOnramp = async () => {
+    if (!authenticated) {
+      alert("Please sign in with your CDP Embedded Wallet to use onramp");
+      return;
+    }
+
+    if (!address) {
+      alert("No wallet address found. Please ensure you're signed in with your embedded wallet");
+      return;
+    }
+
     if (!isConnected) {
-      alert("Please connect your wallet first");
+      alert("Please connect your embedded wallet first");
       return;
     }
 
@@ -531,19 +645,14 @@ export default function OnrampFeature() {
                 </div>
               </div>
 
-              {/* Connect Wallet Button */}
+              {/* Embedded Wallet Required Message */}
               {!isConnected && (
                 <div className="mb-6">
-                  <button
-                    onClick={() => {
-                      if (connectors.length > 0) {
-                        connect({ connector: connectors[0] });
-                      }
-                    }}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-all shadow-md hover:shadow-lg"
-                  >
-                    Connect Wallet
-                  </button>
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      <strong>Note:</strong> Onramp requires CDP Embedded Wallet. Please sign in using the "Sign in" button in the header to continue.
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -860,7 +969,7 @@ export default function OnrampFeature() {
                       onClick={
                         isConnected
                           ? handleOnramp
-                          : () => alert("Please connect your wallet first")
+                          : () => alert("Please sign in with your CDP Embedded Wallet to use onramp")
                       }
                     >
                       Buy with Coinbase

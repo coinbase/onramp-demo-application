@@ -1,15 +1,64 @@
 /**
  * API utilities for Coinbase Onramp
  */
-import { fetchOnrampConfig, fetchOnrampOptions } from '@coinbase/onchainkit/fund';
 
-// Types for Buy Config API response
+// Types for Buy Config API response (RAW from CDP API)
+export interface ApiPaymentMethodType {
+  id: string; // Payment method enum: CARD, ACH_BANK_ACCOUNT, APPLE_PAY, etc.
+}
+
+export interface ApiSupportedCountry {
+  id: string; // ISO 3166-1 two-letter country code
+  payment_methods: ApiPaymentMethodType[];
+  subdivisions?: string[]; // Only returned for US (state codes)
+}
+
+export interface ApiBuyConfigResponse {
+  countries: ApiSupportedCountry[];
+}
+
+// Types for Buy Options API response (RAW from CDP API)
+export interface ApiPaymentMethodLimit {
+  id: string; // Payment method type: CARD, ACH_BANK_ACCOUNT, etc.
+  min: string;
+  max: string;
+}
+
+export interface ApiPaymentCurrency {
+  id: string; // e.g., "USD"
+  limits: ApiPaymentMethodLimit[];
+}
+
+export interface ApiPublicNetwork {
+  name: string; // e.g., "ethereum"
+  display_name: string; // e.g., "Ethereum"
+  chain_id?: number;
+  contract_address?: string;
+}
+
+export interface ApiPurchaseCurrency {
+  id: string; // Unique identifier
+  symbol: string; // e.g., "USDC"
+  name: string; // e.g., "USD Coin"
+  networks: ApiPublicNetwork[];
+  icon_url?: string;
+}
+
+export interface ApiBuyOptionsResponse {
+  payment_currencies: ApiPaymentCurrency[];
+  purchase_currencies: ApiPurchaseCurrency[];
+}
+
+// UI-friendly types (transformed from API response)
 export interface PaymentMethod {
   id: string;
+  name: string;
+  description?: string;
 }
 
 export interface Country {
   id: string;
+  name: string;
   paymentMethods: PaymentMethod[];
   subdivisions?: string[];
 }
@@ -18,7 +67,6 @@ export interface BuyConfigResponse {
   countries: Country[];
 }
 
-// Types for Buy Options API response
 export interface CurrencyLimit {
   id: string;
   min: string;
@@ -27,7 +75,7 @@ export interface CurrencyLimit {
 
 export interface PaymentCurrency {
   id: string;
-  name?: string;
+  name: string;
   limits: CurrencyLimit[];
 }
 
@@ -38,18 +86,18 @@ export interface FiatCurrency {
 }
 
 export interface Network {
-  chainId: number;
-  contractAddress: string;
-  displayName: string;
-  name: string;
+  id: string; // Transformed from API's "name"
+  name: string; // Transformed from API's "display_name"
+  chainId?: number;
+  contractAddress?: string;
 }
 
 export interface PurchaseCurrency {
-  iconUrl: string;
   id: string;
+  symbol: string;
   name: string;
   networks: Network[];
-  symbol: string;
+  iconUrl?: string;
 }
 
 export interface BuyOptionsResponse {
@@ -146,6 +194,81 @@ export const countryNames: Record<string, string> = {
   KZ: "Kazakhstan",
 };
 
+// Helper function to map payment method IDs to friendly names
+export const paymentMethodNames: Record<string, { name: string; description: string }> = {
+  CARD: { name: "Debit/Credit Card", description: "Available in 90+ countries" },
+  ACH_BANK_ACCOUNT: { name: "Bank Transfer (ACH)", description: "US only, 1-3 business days" },
+  APPLE_PAY: { name: "Apple Pay", description: "Available on iOS devices" },
+  PAYPAL: { name: "PayPal", description: "Available in select countries" },
+  RTP: { name: "Real-Time Payments (RTP)", description: "US only, instant" },
+  FIAT_WALLET: { name: "Coinbase Fiat Wallet", description: "Instant transfer to your Coinbase account" },
+  CRYPTO_ACCOUNT: { name: "Crypto Account", description: "Coinbase crypto account" },
+  GUEST_CHECKOUT_CARD: { name: "Guest Checkout Card", description: "Card payment without account" },
+  GUEST_CHECKOUT_APPLE_PAY: { name: "Guest Checkout Apple Pay", description: "Apple Pay without account" },
+  UNSPECIFIED: { name: "Unspecified", description: "Payment method not specified" },
+};
+
+// Helper mapping for currency names
+const currencyNames: Record<string, string> = {
+  USD: "US Dollar",
+  EUR: "Euro",
+  GBP: "British Pound",
+  CAD: "Canadian Dollar",
+  AUD: "Australian Dollar",
+  JPY: "Japanese Yen",
+  CHF: "Swiss Franc",
+  NZD: "New Zealand Dollar",
+  SGD: "Singapore Dollar",
+  HKD: "Hong Kong Dollar",
+  MXN: "Mexican Peso",
+  BRL: "Brazilian Real",
+};
+
+// Helper function to transform CDP Buy Config API response to UI-friendly format
+export function transformBuyConfigResponse(apiResponse: ApiBuyConfigResponse): BuyConfigResponse {
+  return {
+    countries: apiResponse.countries.map((country) => ({
+      id: country.id,
+      name: countryNames[country.id] || country.id,
+      paymentMethods: country.payment_methods.map((pm) => ({
+        id: pm.id,
+        name: paymentMethodNames[pm.id]?.name || pm.id,
+        description: paymentMethodNames[pm.id]?.description,
+      })),
+      subdivisions: country.subdivisions,
+    })),
+  };
+}
+
+// Helper function to transform CDP Buy Options API response to UI-friendly format
+export function transformBuyOptionsResponse(apiResponse: ApiBuyOptionsResponse): BuyOptionsResponse {
+  return {
+    // Transform payment currencies (fiat)
+    paymentCurrencies: apiResponse.payment_currencies.map((currency) => ({
+      id: currency.id,
+      name: currencyNames[currency.id] || currency.id,
+      limits: currency.limits.map((limit) => ({
+        id: limit.id,
+        min: limit.min,
+        max: limit.max,
+      })),
+    })),
+    // Transform purchase currencies (crypto assets)
+    purchaseCurrencies: apiResponse.purchase_currencies.map((asset) => ({
+      id: asset.id,
+      symbol: asset.symbol, // Use symbol (e.g., "USDC")
+      name: asset.name,
+      networks: asset.networks.map((network) => ({
+        id: network.name, // Use name (e.g., "ethereum") as the id
+        name: network.display_name, // Use display_name (e.g., "Ethereum") for display
+        chainId: network.chain_id,
+        contractAddress: network.contract_address,
+      })),
+      iconUrl: asset.icon_url,
+    })),
+  };
+}
+
 // Cache for API responses
 let buyConfigCache: BuyConfigResponse | null = null;
 let buyOptionsCache: Record<string, BuyOptionsResponse> = {};
@@ -185,7 +308,9 @@ const assetNetworkMap: Record<string, string[]> = {
 };
 
 /**
- * Fetches the list of supported countries and payment methods
+ * Fetches the list of supported countries and payment methods from CDP API
+ * API Docs: https://docs.cdp.coinbase.com/onramp/v1/buy/config
+ * Returns UI-friendly format with country names and payment method descriptions
  */
 export async function fetchBuyConfig(): Promise<BuyConfigResponse> {
   try {
@@ -195,31 +320,31 @@ export async function fetchBuyConfig(): Promise<BuyConfigResponse> {
       return buyConfigCache;
     }
 
-    // Use the OnchainKit utility to fetch the config
-    const config = await fetchOnrampConfig();
-    console.log('Buy config API response from OnchainKit:', config);
+    // Call the real CDP Buy Config API
+    const response = await fetch('/api/buy-config');
 
-    // Transform the response to match our expected format if needed
-    const transformedConfig: BuyConfigResponse = {
-      countries: config.countries.map(country => ({
-        id: country.id,
-        paymentMethods: country.paymentMethods.map(method => ({ id: String(method) })),
-        subdivisions: country.subdivisions
-      }))
-    };
-
-    // Log all country IDs for debugging
-    if (transformedConfig && transformedConfig.countries && Array.isArray(transformedConfig.countries)) {
-      console.log('Countries returned by API:', transformedConfig.countries.map(c => c.id).join(', '));
+    if (!response.ok) {
+      console.warn('Failed to fetch buy config from API, using fallback data');
+      throw new Error('API call failed');
     }
 
+    const apiData: ApiBuyConfigResponse = await response.json();
+    // Transform CDP API format to UI-friendly format
+    const transformedData = transformBuyConfigResponse(apiData);
+
+    console.log('✅ Buy config loaded from CDP API:', {
+      countryCount: transformedData.countries.length,
+      countries: transformedData.countries.map(c => c.id).join(', ')
+    });
+
     // Update cache
-    buyConfigCache = transformedConfig;
+    buyConfigCache = transformedData;
     lastConfigFetch = now;
 
-    return transformedConfig;
+    return transformedData;
   } catch (error) {
-    console.error("Error fetching buy config:", error);
+    console.error("⚠️ Error fetching buy config from CDP API, using fallback data:", error);
+    console.warn("⚠️ Using mock data for countries and payment methods. Real API data may differ.");
 
     // If API call fails and we have a cache, return the cache even if expired
     if (buyConfigCache) {
@@ -227,79 +352,70 @@ export async function fetchBuyConfig(): Promise<BuyConfigResponse> {
       return buyConfigCache;
     }
 
-    // If no cache, return a default response
+    // Fallback to mock data if API fails
     return {
       countries: [
         {
           id: "US",
+          name: "United States",
           paymentMethods: [
-            { id: "CARD" },
-            { id: "ACH_BANK_ACCOUNT" },
-            { id: "APPLE_PAY" },
-            { id: "PAYPAL" }
+            { id: "CARD", name: "Debit/Credit Card", description: "Available in 90+ countries" },
+            { id: "ACH_BANK_ACCOUNT", name: "Bank Transfer (ACH)", description: "US only, 1-3 business days" },
+            { id: "APPLE_PAY", name: "Apple Pay", description: "Available on iOS devices" },
+            { id: "PAYPAL", name: "PayPal", description: "Available in select countries" }
           ],
           subdivisions: [
             "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
             "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
             "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
             "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
-            "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"
+            "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "DC"
           ]
         },
         {
           id: "GB",
+          name: "United Kingdom",
           paymentMethods: [
-            { id: "CARD" },
-            { id: "PAYPAL" }
-          ]
-        },
-        {
-          id: "DE",
-          paymentMethods: [
-            { id: "CARD" },
-            { id: "SEPA" }
-          ]
-        },
-        {
-          id: "FR",
-          paymentMethods: [
-            { id: "CARD" },
-            { id: "SEPA" }
-          ]
-        },
-        {
-          id: "ES",
-          paymentMethods: [
-            { id: "CARD" },
-            { id: "SEPA" }
-          ]
-        },
-        {
-          id: "IT",
-          paymentMethods: [
-            { id: "CARD" },
-            { id: "SEPA" }
+            { id: "CARD", name: "Debit/Credit Card", description: "Available in 90+ countries" },
+            { id: "PAYPAL", name: "PayPal", description: "Available in select countries" }
           ]
         },
         {
           id: "CA",
+          name: "Canada",
           paymentMethods: [
-            { id: "CARD" }
+            { id: "CARD", name: "Debit/Credit Card", description: "Available in 90+ countries" }
+          ]
+        },
+        {
+          id: "DE",
+          name: "Germany",
+          paymentMethods: [
+            { id: "CARD", name: "Debit/Credit Card", description: "Available in 90+ countries" }
+          ]
+        },
+        {
+          id: "FR",
+          name: "France",
+          paymentMethods: [
+            { id: "CARD", name: "Debit/Credit Card", description: "Available in 90+ countries" }
           ]
         },
         {
           id: "AU",
+          name: "Australia",
           paymentMethods: [
-            { id: "CARD" }
+            { id: "CARD", name: "Debit/Credit Card", description: "Available in 90+ countries" }
           ]
-        }
+        },
       ]
     };
   }
 }
 
 /**
- * Fetches the available options for buying crypto
+ * Fetches the available options for buying crypto from CDP API
+ * API Docs: https://docs.cdp.coinbase.com/onramp/v1/buy/options
  */
 export async function fetchBuyOptions(country: string, subdivision?: string): Promise<BuyOptionsResponse> {
   try {
@@ -312,37 +428,46 @@ export async function fetchBuyOptions(country: string, subdivision?: string): Pr
       return buyOptionsCache[cacheKey];
     }
 
-    // Use the OnchainKit utility to fetch the options
-    const options = await fetchOnrampOptions({ country, subdivision });
-    console.log('Buy options API response from OnchainKit:', options);
-
-    // Transform the response to match our expected format if needed
-    const transformedOptions: BuyOptionsResponse = {
-      paymentCurrencies: options.paymentCurrencies || [],
-      purchaseCurrencies: (options.purchaseCurrencies || []).map(currency => ({
-        ...currency,
-        networks: (currency.networks || []).map(network => ({
-          ...network,
-          chainId: Number(network.chainId) // Convert chainId from string to number
-        }))
-      }))
-    };
-
-    // Log all payment currencies and purchase currencies for debugging
-    if (transformedOptions.paymentCurrencies && Array.isArray(transformedOptions.paymentCurrencies)) {
-      console.log('Payment currencies returned by API:', transformedOptions.paymentCurrencies.map(c => c.id).join(', '));
+    // Call the real CDP Buy Options API
+    const params = new URLSearchParams({ country });
+    if (subdivision) {
+      params.append('subdivision', subdivision);
     }
-    if (transformedOptions.purchaseCurrencies && Array.isArray(transformedOptions.purchaseCurrencies)) {
-      console.log('Purchase currencies (assets) returned by API:', transformedOptions.purchaseCurrencies.map(c => c.id).join(', '));
+
+    console.log('📡 Calling Buy Options API:', { country, subdivision });
+    const response = await fetch(`/api/buy-options?${params.toString()}`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Buy Options API failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+      });
+      throw new Error(`API call failed: ${response.status} ${errorText}`);
     }
+
+    const apiData: ApiBuyOptionsResponse = await response.json();
+    console.log('📦 Raw API response:', apiData);
+
+    // Transform CDP API response to UI-friendly format
+    const transformedData = transformBuyOptionsResponse(apiData);
+
+    console.log('✅ Buy options loaded from CDP API:', {
+      paymentCurrenciesCount: transformedData.paymentCurrencies?.length || 0,
+      purchaseCurrenciesCount: transformedData.purchaseCurrencies?.length || 0,
+      paymentCurrencies: transformedData.paymentCurrencies.map(c => c.id).join(', '),
+      purchaseCurrencies: transformedData.purchaseCurrencies.map(c => c.symbol).join(', '),
+    });
 
     // Update cache
-    buyOptionsCache[cacheKey] = transformedOptions;
+    buyOptionsCache[cacheKey] = transformedData;
     lastOptionsFetch[cacheKey] = now;
 
-    return transformedOptions;
+    return transformedData;
   } catch (error) {
-    console.error("Error fetching buy options:", error);
+    console.error("⚠️ Error fetching buy options from CDP API, using fallback data:", error);
+    console.warn("⚠️ Using mock data for assets and payment currencies. Real API data may differ.");
 
     // If API call fails and we have a cache for this country/subdivision, return the cache even if expired
     const cacheKey = `${country}${subdivision ? `-${subdivision}` : ''}`;
@@ -351,7 +476,7 @@ export async function fetchBuyOptions(country: string, subdivision?: string): Pr
       return buyOptionsCache[cacheKey];
     }
 
-    // If no cache, return a default response
+    // Fallback to mock data if API fails
     return {
       paymentCurrencies: [
         {
@@ -421,28 +546,28 @@ export async function fetchBuyOptions(country: string, subdivision?: string): Pr
           symbol: "ETH",
           networks: [
             {
+              id: "ethereum",
+              name: "Ethereum",
               chainId: 1,
-              contractAddress: "",
-              displayName: "Ethereum",
-              name: "ethereum"
+              contractAddress: ""
             },
             {
+              id: "optimism",
+              name: "Optimism",
               chainId: 10,
-              contractAddress: "",
-              displayName: "Optimism",
-              name: "optimism"
+              contractAddress: ""
             },
             {
+              id: "arbitrum",
+              name: "Arbitrum",
               chainId: 42161,
-              contractAddress: "",
-              displayName: "Arbitrum",
-              name: "arbitrum"
+              contractAddress: ""
             },
             {
+              id: "base",
+              name: "Base",
               chainId: 8453,
-              contractAddress: "",
-              displayName: "Base",
-              name: "base"
+              contractAddress: ""
             }
           ]
         },
@@ -453,64 +578,40 @@ export async function fetchBuyOptions(country: string, subdivision?: string): Pr
           symbol: "USDC",
           networks: [
             {
+              id: "ethereum",
+              name: "Ethereum",
               chainId: 1,
-              contractAddress: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-              displayName: "Ethereum",
-              name: "ethereum"
+              contractAddress: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
             },
             {
+              id: "optimism",
+              name: "Optimism",
               chainId: 10,
-              contractAddress: "0x7f5c764cbc14f9669b88837ca1490cca17c31607",
-              displayName: "Optimism",
-              name: "optimism"
+              contractAddress: "0x7f5c764cbc14f9669b88837ca1490cca17c31607"
             },
             {
+              id: "arbitrum",
+              name: "Arbitrum",
               chainId: 42161,
-              contractAddress: "0xff970a61a04b1ca14834a43f5de4533ebddb5cc8",
-              displayName: "Arbitrum",
-              name: "arbitrum"
+              contractAddress: "0xff970a61a04b1ca14834a43f5de4533ebddb5cc8"
             },
             {
+              id: "base",
+              name: "Base",
               chainId: 8453,
-              contractAddress: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
-              displayName: "Base",
-              name: "base"
+              contractAddress: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
             },
             {
+              id: "polygon",
+              name: "Polygon",
               chainId: 137,
-              contractAddress: "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",
-              displayName: "Polygon",
-              name: "polygon"
+              contractAddress: "0x2791bca1f2de4661ed88a30c99a7a9449aa84174"
             },
             {
-              chainId: 1111,
-              contractAddress: "0x1234567890abcdef1234567890abcdef12345678",
-              displayName: "Unichain",
-              name: "unichain"
-            },
-            {
-              chainId: 1,
-              contractAddress: "0xfedcba9876543210fedcba9876543210fedcba98",
-              displayName: "Aptos",
-              name: "aptos"
-            },
-            {
-              chainId: 43114,
-              contractAddress: "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
-              displayName: "Avalanche",
-              name: "avalanche"
-            },
-            {
-              chainId: 56,
-              contractAddress: "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
-              displayName: "BNB Chain",
-              name: "bnb-chain"
-            },
-            {
+              id: "solana",
+              name: "Solana",
               chainId: 0,
-              contractAddress: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-              displayName: "Solana",
-              name: "solana"
+              contractAddress: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
             }
           ]
         },
@@ -521,10 +622,10 @@ export async function fetchBuyOptions(country: string, subdivision?: string): Pr
           symbol: "BTC",
           networks: [
             {
+              id: "bitcoin",
+              name: "Bitcoin",
               chainId: 0,
-              contractAddress: "",
-              displayName: "Bitcoin",
-              name: "bitcoin"
+              contractAddress: ""
             }
           ]
         },
@@ -535,10 +636,10 @@ export async function fetchBuyOptions(country: string, subdivision?: string): Pr
           symbol: "SOL",
           networks: [
             {
+              id: "solana",
+              name: "Solana",
               chainId: 0,
-              contractAddress: "",
-              displayName: "Solana",
-              name: "solana"
+              contractAddress: ""
             }
           ]
         },
@@ -549,16 +650,16 @@ export async function fetchBuyOptions(country: string, subdivision?: string): Pr
           symbol: "MATIC",
           networks: [
             {
+              id: "ethereum",
+              name: "Ethereum",
               chainId: 1,
-              contractAddress: "0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0",
-              displayName: "Ethereum",
-              name: "ethereum"
+              contractAddress: "0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0"
             },
             {
+              id: "polygon",
+              name: "Polygon",
               chainId: 137,
-              contractAddress: "",
-              displayName: "Polygon",
-              name: "polygon"
+              contractAddress: ""
             }
           ]
         }

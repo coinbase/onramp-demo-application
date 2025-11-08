@@ -20,12 +20,17 @@ interface SessionTokenResponse {
  * Generates a JWT token for CDP API authentication using the CDP SDK
  * @param keyName - The CDP API key name
  * @param keySecret - The CDP API private key
+ * @param requestPath - The API request path (defaults to /onramp/v1/token)
+ * @param requestMethod - The HTTP method (defaults to POST)
  * @returns Promise of signed JWT token
  */
-export async function generateJWT(keyName: string, keySecret: string): Promise<string> {
-  const requestMethod = 'POST';
+export async function generateJWT(
+  keyName: string, 
+  keySecret: string, 
+  requestPath: string = '/onramp/v1/token',
+  requestMethod: string = 'POST'
+): Promise<string> {
   const requestHost = 'api.developer.coinbase.com';
-  const requestPath = '/onramp/v1/token';
   
   try {
     // Process the private key to ensure it has proper newlines

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { useAccount } from "wagmi";
 import { useCoinbaseRampTransaction } from "../contexts/CoinbaseRampTransactionContext";
 import { useSessionToken } from "../hooks/useSessionToken";
 import { getOnrampBuyUrl } from "@coinbase/onchainkit/fund";
@@ -33,12 +32,12 @@ export function FundCardWithSessionToken({
   presetAmountInputs = ["10", "20", "50"] as const,
   defaultNetwork = "base"
 }: FundCardWithSessionTokenProps) {
-  const { address: wagmiAddress, isConnected: wagmiConnected } = useAccount();
   const { rampTransaction, authenticated } = useCoinbaseRampTransaction();
-  
-  // Use embedded wallet address if available, otherwise fall back to wagmi wallet
-  const address = rampTransaction?.wallet || wagmiAddress;
-  const isConnected = authenticated || wagmiConnected;
+
+  // Only use embedded wallet address - do not fall back to wagmi wallet
+  // This ensures users must connect with embedded wallet for fund features
+  const address = authenticated ? rampTransaction?.wallet : undefined;
+  const isConnected = authenticated && !!rampTransaction?.wallet;
   const [amount, setAmount] = useState(presetAmountInputs[1]); // Default to middle preset
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,8 +91,10 @@ export function FundCardWithSessionToken({
 
   if (!isConnected) {
     return (
-      <div className="max-w-md mx-auto p-6 border rounded-xl bg-yellow-50 text-yellow-700">
-        <p className="text-center">Please connect your wallet to use the Fund Card</p>
+      <div className="max-w-md mx-auto p-6 border rounded-xl bg-blue-50 border-blue-200">
+        <p className="text-sm text-blue-800 text-center">
+          <strong>Note:</strong> Fund Card requires CDP Embedded Wallet. Please sign in with your embedded wallet to continue.
+        </p>
       </div>
     );
   }

@@ -1,9 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useAccount, useConnect } from "wagmi";
 import { useCoinbaseRampTransaction } from "../contexts/CoinbaseRampTransactionContext";
-import { generateOfframpURL } from "../utils/rampUtils";
 import {
   fetchSellConfig,
   fetchSellOptions,
@@ -12,7 +10,6 @@ import {
 } from "../utils/offrampApi";
 import { useSearchParams } from "next/navigation";
 import OfframpNotification from "./OfframpNotification";
-import { WalletDefault } from "@coinbase/onchainkit/wallet";
 
 // Define types for the modal component
 interface SimpleModalProps {
@@ -196,13 +193,12 @@ const US_STATES = [
 ];
 
 export default function OfframpFeature() {
-  const { address: wagmiAddress, isConnected: wagmiConnected } = useAccount();
-  const { connect, connectors } = useConnect();
   const { rampTransaction, authenticated } = useCoinbaseRampTransaction();
-  
-  // Use embedded wallet address if available, otherwise fall back to wagmi wallet
-  const address = rampTransaction?.wallet || wagmiAddress;
-  const isConnected = authenticated || wagmiConnected;
+
+  // Only use embedded wallet address - do not fall back to wagmi wallet
+  // This ensures users must connect with embedded wallet for offramp
+  const address = authenticated ? rampTransaction?.wallet : undefined;
+  const isConnected = authenticated && !!rampTransaction?.wallet;
   const [selectedAsset, setSelectedAsset] = useState("USDC");
   const [amount, setAmount] = useState("10");
   const [selectedNetwork, setSelectedNetwork] = useState("base");
@@ -222,7 +218,6 @@ export default function OfframpFeature() {
   const [cashoutCurrencies, setCashoutCurrencies] = useState<FiatCurrency[]>(
     []
   );
-  const [useSecureInit, setUseSecureInit] = useState(true);
   const [isGeneratingToken, setIsGeneratingToken] = useState(false);
 
   // Default assets if API fails
@@ -280,6 +275,20 @@ export default function OfframpFeature() {
             USD: { min: "10", max: "5000" },
           },
         },
+        {
+          id: "FIAT_WALLET",
+          name: "Coinbase Fiat Wallet",
+          limits: {
+            USD: { min: "1", max: "50000" },
+          },
+        },
+        {
+          id: "RTP",
+          name: "Real-Time Payments (RTP)",
+          limits: {
+            USD: { min: "10", max: "5000" },
+          },
+        },
       ],
     },
     {
@@ -312,10 +321,46 @@ export default function OfframpFeature() {
 
   // Show notification if returning from Coinbase with a status
   useEffect(() => {
-    if (status) {
-      setShowNotification(true);
+    // Log all URL parameters for debugging
+    const allParams: Record<string, string> = {};
+    searchParams.forEach((value, key) => {
+      allParams[key] = value;
+    });
+    
+    if (Object.keys(allParams).length > 0) {
+      console.log("\n═══════════════════════════════════════════════════════");
+      console.log("🔙 Returned from Coinbase Offramp");
+      console.log("═══════════════════════════════════════════════════════");
+      console.log("URL Parameters received:", allParams);
+      
+      if (status) {
+        console.log("✅ Transaction Status:", status);
+        setShowNotification(true);
+      } else {
+        console.log("⚠️  No status parameter received");
+        console.log("\nThis usually means one of the following:");
+        console.log("\n🔑 MOST COMMON - Coinbase Account Issue:");
+        console.log("  • You don't have a Coinbase account");
+        console.log("  • Your bank account/payment method is not linked in Coinbase");
+        console.log("  • Your identity is not verified in your Coinbase account");
+        console.log("  • Guest checkout was attempted (not supported for offramp)");
+        console.log("\n💰 Wallet Balance Issue:");
+        console.log("  • Insufficient funds in your connected wallet");
+        console.log("  • Asset is on wrong network");
+        console.log("\n❌ Other Reasons:");
+        console.log("  • Transaction was cancelled");
+        console.log("  • Network/connectivity issue");
+        console.log("\n📋 Action Required:");
+        console.log("  1. Create/login to Coinbase account at coinbase.com");
+        console.log("  2. Complete identity verification");
+        console.log("  3. Link your bank account or PayPal");
+        console.log("  4. Ensure you have crypto in your wallet");
+        console.log("  5. Try the transaction again");
+        setShowNotification(true);
+      }
+      console.log("═══════════════════════════════════════════════════════\n");
     }
-  }, [status]);
+  }, [status, searchParams]);
 
   // Fetch countries on component mount
   useEffect(() => {
@@ -503,66 +548,23 @@ export default function OfframpFeature() {
     }
   };
 
-  // Generate session token
-  const generateSessionToken = async () => {
-    if (!address) {
-      alert("Please connect your wallet first");
-      return null;
-    }
-
-    try {
-      setIsGeneratingToken(true);
-      
-      // Prepare addresses array based on selected network
-      const addresses = [{
-        address: address,
-        blockchains: [selectedNetwork]
-      }];
-      
-      // Make request to our API endpoint
-      const response = await fetch('/api/session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          addresses,
-          assets: [selectedAsset],
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to generate session token');
-      }
-
-      const data = await response.json();
-      
-      // Check if this is a mock token
-      if (data.mock) {
-        console.warn('Using mock session token. In production, configure CDP API credentials.');
-        // For demo purposes, we'll skip using the session token
-        return null;
-      }
-      
-      return data.token;
-    } catch (error) {
-      console.error('Error generating session token:', error);
-      // Don't show alert - just proceed without session token
-      // The offramp will work with projectId/addresses instead
-      return null;
-    } finally {
-      setIsGeneratingToken(false);
-    }
-  };
-
-  // Handle offramp
+  // Handle offramp using Sell Quote API
   const handleOfframp = async () => {
     // Clear any previous error
     setErrorMessage(null);
 
+    if (!authenticated) {
+      setErrorMessage("Please sign in with your CDP Embedded Wallet to use offramp");
+      return;
+    }
+
+    if (!address) {
+      setErrorMessage("No wallet address found. Please ensure you're signed in with your embedded wallet");
+      return;
+    }
+
     if (!isConnected) {
-      setErrorMessage("Please connect your wallet first");
+      setErrorMessage("Please connect your embedded wallet first");
       return;
     }
 
@@ -571,61 +573,141 @@ export default function OfframpFeature() {
       return;
     }
 
-    let sessionToken: string | undefined;
-    
-    // Generate session token if secure init is enabled
-    if (useSecureInit) {
-      const token = await generateSessionToken();
-      // If token generation fails, continue without it (will use projectId/addresses)
-      sessionToken = token || undefined;
+    try {
+      setIsGeneratingToken(true);
+
+      // Generate session token for secure offramp
+      const sessionTokenResponse = await fetch('/api/session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          addresses: [{
+            address: address,
+            blockchains: [selectedNetwork],
+          }],
+        }),
+      });
+
+      if (!sessionTokenResponse.ok) {
+        throw new Error('Failed to generate session token');
+      }
+
+      const { token: sessionToken } = await sessionTokenResponse.json();
+
+      if (!sessionToken) {
+        throw new Error('No session token received');
+      }
+
+      // Build offramp URL with session token and default values
+      // This shows the input/validation screen instead of skipping to confirmation
+      const offrampUrl = new URL('https://pay.coinbase.com/v3/sell/input');
+      offrampUrl.searchParams.set('sessionToken', sessionToken);
+      offrampUrl.searchParams.set('partnerUserId', address.substring(0, 49));
+      offrampUrl.searchParams.set('redirectUrl', `${window.location.origin}/offramp`);
+      offrampUrl.searchParams.set('defaultAsset', selectedAsset);
+      offrampUrl.searchParams.set('defaultNetwork', selectedNetwork);
+      offrampUrl.searchParams.set('defaultCashoutMethod', selectedCashoutMethod);
+      offrampUrl.searchParams.set('fiatCurrency', selectedCashoutCurrency);
+
+      console.log("🚀 Opening Coinbase offramp page...");
+      console.log("📝 Offramp URL with validation:", offrampUrl.toString());
+      console.log("ℹ️  URL includes: sessionToken, defaultAsset, defaultNetwork, defaultPaymentMethod");
+      console.log("\n═══════════════════════════════════════════════════════");
+      console.log("⚠️  CRITICAL: Offramp Transaction Requirements");
+      console.log("═══════════════════════════════════════════════════════");
+      console.log("🔑 COINBASE ACCOUNT REQUIRED:");
+      console.log("  ⚠️  You MUST have a Coinbase account with linked bank details");
+      console.log("  ⚠️  Guest checkout is NOT supported for fiat withdrawals");
+      console.log(`  ⚠️  Your selected payment method (${selectedCashoutMethod}) must be linked to your Coinbase account`);
+      console.log("\n✓ WALLET REQUIREMENTS:");
+      console.log(`  • Asset must be on ${selectedNetwork} network`);
+      console.log(`  • Wallet address: ${address}`);
+      console.log("\n💡 Balance Validation:");
+      console.log("  • The offramp screen will show your available balance");
+      console.log("  • You'll see an error if you don't have enough funds");
+      console.log("\n🔄 You'll be redirected back here after the transaction");
+      console.log("═══════════════════════════════════════════════════════\n");
+
+      // Open the offramp URL
+      window.open(offrampUrl.toString(), "_blank");
+    } catch (error) {
+      console.error('Error creating offramp:', error);
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to create offramp. Please try again.');
+    } finally {
+      setIsGeneratingToken(false);
     }
-
-    const url = generateOfframpURL({
-      asset: selectedAsset,
-      amount,
-      network: selectedNetwork,
-      cashoutMethod: selectedCashoutMethod,
-      address: address || "0x0000000000000000000000000000000000000000",
-      redirectUrl: window.location.origin + "/offramp",
-      sessionToken, // Include session token if generated
-    });
-
-    window.open(url, "_blank");
   };
 
-  // Generate one-time URL
+  // Generate one-time URL using Sell Quote API
   const handleGenerateUrl = async () => {
+    if (!authenticated) {
+      setErrorMessage("Please sign in with your CDP Embedded Wallet to use offramp");
+      return;
+    }
+
     if (!address) {
-      alert("Please connect your wallet first");
+      setErrorMessage("No wallet address found. Please ensure you're signed in with your embedded wallet");
       return;
     }
 
     if (!selectedCashoutMethod) {
-      alert("Please select a cashout method");
+      setErrorMessage("Please select a cashout method");
       return;
     }
 
-    let sessionToken: string | undefined;
-    
-    // Generate session token if secure init is enabled
-    if (useSecureInit) {
-      const token = await generateSessionToken();
-      // If token generation fails, continue without it (will use projectId/addresses)
-      sessionToken = token || undefined;
+    try {
+      setIsGeneratingToken(true);
+
+      // Call Sell Quote API to get ready-to-use offramp URL
+      const response = await fetch('/api/sell-quote', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sellCurrency: selectedAsset,
+          sellAmount: amount,
+          sellNetwork: selectedNetwork,
+          cashoutCurrency: selectedCashoutCurrency,
+          paymentMethod: selectedCashoutMethod,
+          country: selectedCountry,
+          subdivision: selectedCountry === 'US' ? selectedSubdivision : undefined,
+          sourceAddress: address,
+          redirectUrl: window.location.origin + "/offramp",
+          partnerUserId: address.substring(0, 49), // Use wallet address as user ID
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Sell Quote API error response:', error);
+        const errorMsg = error.details || error.error || 'Failed to generate offramp quote';
+        const hint = error.hint ? `\n${error.hint}` : '';
+        throw new Error(errorMsg + hint);
+      }
+
+      const data = await response.json();
+
+      console.log('✅ Sell quote response received for URL generation:', data);
+
+      // Check if offramp_url is present in response
+      if (!data.offramp_url) {
+        throw new Error('No offramp URL in response');
+      }
+
+      console.log("✨ Generated offramp URL:", data.offramp_url);
+      console.log("💡 Note: Recipients will need actual", selectedAsset, "in their wallet to complete this transaction");
+
+      setGeneratedUrl(data.offramp_url);
+      setShowUrlModal(true);
+    } catch (error) {
+      console.error('Error generating offramp URL:', error);
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to generate offramp URL. Please try again.');
+    } finally {
+      setIsGeneratingToken(false);
     }
-
-    const url = generateOfframpURL({
-      asset: selectedAsset,
-      amount,
-      network: selectedNetwork,
-      cashoutMethod: selectedCashoutMethod,
-      address: address || "0x0000000000000000000000000000000000000000",
-      redirectUrl: window.location.origin + "/offramp",
-      sessionToken, // Include session token if generated
-    });
-
-    setGeneratedUrl(url);
-    setShowUrlModal(true);
   };
 
   // Handle copy URL
@@ -655,6 +737,31 @@ export default function OfframpFeature() {
     <div className="bg-white py-16">
       <div className="container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
+          {/* Demo Info Banner */}
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start">
+              <svg className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <p className="text-sm font-medium text-blue-900">
+                  How Offramp Works
+                </p>
+                <div className="text-sm text-blue-800 mt-2 space-y-2">
+                  <p>
+                    <strong>1. You need crypto in your wallet:</strong> Make sure your connected wallet has the crypto asset you want to sell on the correct network before starting an offramp transaction.
+                  </p>
+                  <p>
+                    <strong>2. Coinbase account required:</strong> Unlike onramp, offramp does NOT support guest checkout. You must have a Coinbase account with verified identity and a linked payment method (bank account, PayPal, etc.).
+                  </p>
+                  <p>
+                    <strong>3. Balance validation:</strong> Coinbase will check your wallet balance and show available funds. If you see "No assets available", you need to fund your wallet first.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Configuration Box */}
             <div className="bg-white p-8 rounded-xl shadow-md border border-gray-200">
@@ -693,19 +800,14 @@ export default function OfframpFeature() {
                 </p>
               </div>
 
-              {/* Connect Wallet Button */}
+              {/* Embedded Wallet Required Message */}
               {activeTab === "api" && !isConnected && (
                 <div className="mb-6">
-                  <button
-                    onClick={() => {
-                      if (connectors.length > 0) {
-                        connect({ connector: connectors[0] });
-                      }
-                    }}
-                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-all shadow-md hover:shadow-lg"
-                  >
-                    Connect Wallet
-                  </button>
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      <strong>Note:</strong> Offramp requires CDP Embedded Wallet. Please sign in using the "Sign in" button in the header to continue.
+                    </p>
+                  </div>
                 </div>
               )}
 
