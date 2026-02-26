@@ -141,8 +141,7 @@ export async function POST(request: NextRequest) {
     // In production, extract the real client IP from the network layer
     let clientIp = 
       request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      request.headers.get('x-real-ip') ||
-      request.ip;
+      request.headers.get('x-real-ip');
     
     // Check if IP is private or localhost and use a public test IP for development
     const isPrivateIp = !clientIp || 
@@ -170,8 +169,8 @@ export async function POST(request: NextRequest) {
     
     if (isPrivateIp) {
       // Use a valid public test IP for development (example IP from documentation RFC 5737)
+      logger.debug('Using test public IP for development', { originalIp: clientIp });
       clientIp = '192.0.2.1';
-      logger.debug('Using test public IP for development', { originalIp: request.ip });
     }
 
     // Generate JWT for authentication
