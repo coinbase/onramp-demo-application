@@ -18,6 +18,7 @@ interface SessionTokenRequest {
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || [
   'http://localhost:3000',
   'http://localhost:3001',
+  'http://localhost:3010',
   // Production domains
   'https://onramp-demo-application-git-main-coinbase-vercel.vercel.app',
   'https://www.onrampdemo.com',

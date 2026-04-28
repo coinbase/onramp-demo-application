@@ -1,4 +1,15 @@
 import { useEffect, useState } from "react";
+import { Box, VStack } from "@coinbase/cds-web/layout";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from "@coinbase/cds-web/tables";
+import { Tag } from "@coinbase/cds-web/tag";
+import { Text } from "@coinbase/cds-web/typography";
 import { useCoinbaseRampTransaction } from "../contexts/CoinbaseRampTransactionContext";
 import { getOrdersByPartnerUserId } from "../queries";
 import { Order } from "../types";
@@ -7,6 +18,12 @@ export const OrderHistory = () => {
   const { partnerUserId } = useCoinbaseRampTransaction();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const getStatusColor = (status: Order["status"]) => {
+    if (status === "completed") return "green";
+    if (status === "pending") return "yellow";
+    return "red";
+  };
 
   useEffect(() => {
     const getOrders = async () => {
@@ -30,8 +47,10 @@ export const OrderHistory = () => {
   }, [partnerUserId]);
 
   return (
-    <div className="order-history w-full p-4">
-      <h2 className="text-xl font-semibold mb-4">Order History</h2>
+    <VStack gap={3} className="order-history w-full p-4">
+      <Text as="h2" font="title3">
+        Order History
+      </Text>
 
       {loading ? (
         <div className="flex justify-center py-8">
@@ -50,82 +69,48 @@ export const OrderHistory = () => {
           </div>
         </div>
       ) : orders.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Date
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Type
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Asset
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Amount
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+        <Box overflow="auto">
+          <Table bordered variant="ruled" accessibilityLabel="Order history">
+            <TableCaption>Order history</TableCaption>
+            <TableHeader>
+              <TableRow backgroundColor="bgAlternate">
+                <TableCell title="Date" />
+                <TableCell title="Type" />
+                <TableCell title="Asset" />
+                <TableCell title="Amount" />
+                <TableCell title="Status" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {orders.map((order, index) => (
-                <tr key={index}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(order.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {order.type}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {order.asset}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {order.amount}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        order.status === "completed"
-                          ? "bg-green-100 text-green-800"
-                          : order.status === "pending"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
+                <TableRow key={order.id || index}>
+                  <TableCell
+                    title={new Date(order.created_at).toLocaleDateString()}
+                  />
+                  <TableCell title={order.type} />
+                  <TableCell title={order.asset} />
+                  <TableCell title={order.amount} />
+                  <TableCell>
+                    <Tag colorScheme={getStatusColor(order.status)}>
                       {order.status}
-                    </span>
-                  </td>
-                </tr>
+                    </Tag>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </Box>
       ) : (
-        <div className="text-center py-8 text-gray-500">
-          <p>No transaction history found.</p>
-          <p className="text-sm mt-2">Complete a transaction to see it here.</p>
-        </div>
+        <Box textAlign="center" padding={4}>
+          <Text as="p" color="fgMuted">
+            No transaction history found.
+          </Text>
+          <Text as="p" font="label2" color="fgMuted">
+            Complete a transaction to see it here.
+          </Text>
+        </Box>
       )}
-    </div>
+    </VStack>
   );
 };
 

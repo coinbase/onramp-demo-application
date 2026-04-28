@@ -1,9 +1,86 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
+import { Button } from "@coinbase/cds-web/buttons";
+import { Box, VStack } from "@coinbase/cds-web/layout";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from "@coinbase/cds-web/tables";
+import { Text } from "@coinbase/cds-web/typography";
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
+import PageHero from "../components/PageHero";
+
+const comparisonRows = [
+  {
+    feature: "Primary Use Case",
+    onramp: "Convert fiat to crypto",
+    offramp: "Convert crypto to fiat",
+    fund: "Fund dApps and projects with crypto",
+    applePay: "Native Apple Pay onramp inside your app",
+  },
+  {
+    feature: "Integration Complexity",
+    onramp: "Low",
+    offramp: "Low",
+    fund: "Very Low",
+    applePay: "Medium",
+  },
+  {
+    feature: "User Experience",
+    onramp: "Embedded in your app",
+    offramp: "Embedded in your app",
+    fund: "Button or card in your app",
+    applePay: "Fastest native in-app flow",
+  },
+  {
+    feature: "Payment Methods",
+    onramp: "Credit/debit cards, bank transfers",
+    offramp: "Coinbase account-linked cashout methods",
+    fund: "Coinbase Onramp payment methods",
+    applePay: "Apple Pay / card-backed guest checkout",
+  },
+  {
+    feature: "Supported Assets",
+    onramp: "25+ cryptocurrencies",
+    offramp: "25+ cryptocurrencies",
+    fund: "ETH, USDC, MATIC, AVAX, ARB, OP",
+    applePay: "Assets returned by Buy Options API",
+  },
+  {
+    feature: "Geographic Availability",
+    onramp: "100+ countries",
+    offramp: "30+ countries",
+    fund: "Global",
+    applePay: "US users only",
+  },
+  {
+    feature: "KYC Requirements",
+    onramp: "Handled by Coinbase when required",
+    offramp: "Coinbase account required",
+    fund: "Handled by Coinbase Onramp",
+    applePay: "Email and phone verification required",
+  },
+  {
+    feature: "Wallet Connection",
+    onramp: "Optional",
+    offramp: "Required",
+    fund: "Required in this demo",
+    applePay: "Destination wallet address required",
+  },
+  {
+    feature: "Extra Setup",
+    onramp: "Session token and redirect domain setup",
+    offramp: "Session token and Coinbase account cashout setup",
+    fund: "OnchainKit provider and project config",
+    applePay: "Domain allowlist, verification file, iframe event handling",
+  },
+];
 
 export default function ComparePage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -20,127 +97,48 @@ export default function ComparePage() {
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-grow">
-        {/* Modern hero section with gradient background */}
-        <section className="relative overflow-hidden">
-          {/* Modern gradient background */}
-          <div className="absolute inset-0 bg-[#fafafa] z-0">
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-white to-indigo-50 opacity-80"></div>
-
-            {/* Subtle grid pattern */}
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGZpbGw9IiNmMWYxZjEiIGQ9Ik0zNiAxOGgtMnYyaDJ6TTQwIDE4aC0ydjJoMnpNNDQgMThoLTJ2Mmgyek0zNCAxNmgtMnYyaDJ6TTM4IDE2aC0ydjJoMnpNNDIgMTZoLTJ2Mmgyek0zMCAxNmgtMnYyaDJ6TTI2IDE2aC0ydjJoMnpNMjIgMTZoLTJ2Mmgyek0xOCAxNmgtMnYyaDJ6TDE0IDE2aC0ydjJoMnpNMTAgMTZIOHYyaDJ6TTYgMTZINHYyaDJ6Ii8+PC9nPjwvc3ZnPg==')] opacity-[0.15]"></div>
-          </div>
-
-          {/* Subtle gradient orb */}
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute top-20 right-10 w-[500px] h-[500px] bg-indigo-400 rounded-full mix-blend-multiply filter blur-[128px] opacity-10 animate-float"></div>
-          </div>
-
-          <div className="container mx-auto px-4 pt-28 pb-16 relative z-10">
-            <div className="max-w-4xl mx-auto text-center">
-              <div className="inline-flex items-center px-4 py-2 rounded-full bg-indigo-50 border border-indigo-200 mb-6">
-                <span className="w-2 h-2 rounded-full bg-indigo-500 mr-2"></span>
-                <span className="text-indigo-700 text-sm font-medium whitespace-nowrap">
-                  Powered by Coinbase Developer Platform
-                </span>
-              </div>
-
-              <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 tracking-tight">
-                Compare Onramp, Offramp & Fund
-              </h1>
-
-              <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
-                Choose the right solution for your application by comparing
-                features and capabilities of Coinbase's Onramp, Offramp, and
-                Fund products.
-              </p>
-
-              <Link
-                href="https://docs.cdp.coinbase.com/onramp/docs/welcome"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center text-indigo-600 hover:text-indigo-700 font-medium mb-10"
-              >
-                View Documentation <span className="ml-2">→</span>
-              </Link>
-            </div>
-          </div>
-        </section>
+        <PageHero
+          eyebrow="Powered by Coinbase Developer Platform"
+          title="Compare Onramp, Offramp, Fund & Apple Pay"
+          description="Choose the right solution for your application by comparing Coinbase Onramp, Offramp, Fund, and Headless Apple Pay Onramp."
+          docsHref="https://docs.cdp.coinbase.com/onramp/docs/welcome"
+        />
 
         {/* Feature Comparison Section */}
         <section className="py-16 bg-white">
           <div className="container mx-auto px-4">
             <div className="max-w-5xl mx-auto">
-              <div className="overflow-x-auto">
-                <table className="min-w-full bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
-                  <thead>
-                    <tr className="bg-gray-200 border-b border-gray-300">
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
-                        Feature
-                      </th>
-                      <th className="px-6 py-4 text-center text-sm font-semibold text-blue-600 uppercase tracking-wider">
-                        Onramp
-                      </th>
-                      <th className="px-6 py-4 text-center text-sm font-semibold text-purple-600 uppercase tracking-wider">
-                        Offramp
-                      </th>
-                      <th className="px-6 py-4 text-center text-sm font-semibold text-amber-600 uppercase tracking-wider">
-                        Fund
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    <FeatureRowWithFund
-                      feature="Primary Use Case"
-                      onramp="Convert fiat to crypto"
-                      offramp="Convert crypto to fiat"
-                      fund="Fund dApps and projects with crypto"
-                    />
-                    <FeatureRowWithFund
-                      feature="Integration Complexity"
-                      onramp="Low"
-                      offramp="Low"
-                      fund="Very Low"
-                    />
-                    <FeatureRowWithFund
-                      feature="User Experience"
-                      onramp="Embedded in your app"
-                      offramp="Embedded in your app"
-                      fund="Button or card in your app"
-                    />
-                    <FeatureRowWithFund
-                      feature="Payment Methods"
-                      onramp="Credit/debit cards, bank transfers"
-                      offramp="Bank transfers"
-                      fund="Crypto wallets"
-                    />
-                    <FeatureRowWithFund
-                      feature="Supported Assets"
-                      onramp="25+ cryptocurrencies"
-                      offramp="25+ cryptocurrencies"
-                      fund="ETH, USDC, MATIC, AVAX, ARB, OP"
-                    />
-                    <FeatureRowWithFund
-                      feature="Geographic Availability"
-                      onramp="100+ countries"
-                      offramp="30+ countries"
-                      fund="Global"
-                    />
-                    <FeatureRowWithFund
-                      feature="KYC Requirements"
-                      onramp="Yes"
-                      offramp="Yes"
-                      fund="No"
-                    />
-                    <FeatureRowWithFund
-                      feature="Wallet Connection"
-                      onramp="Optional"
-                      offramp="Required"
-                      fund="Required"
-                      isLastRow={true}
-                    />
-                  </tbody>
-                </table>
-              </div>
+              <Box overflow="auto">
+                <Table
+                  bordered
+                  variant="ruled"
+                  accessibilityLabel="Feature comparison table"
+                >
+                  <TableCaption>
+                    Compare Onramp, Offramp, Fund, and Apple Pay features
+                  </TableCaption>
+                  <TableHeader>
+                    <TableRow backgroundColor="bgAlternate">
+                      <TableCell title="Feature" />
+                      <TableCell title="Onramp" />
+                      <TableCell title="Offramp" />
+                      <TableCell title="Fund" />
+                      <TableCell title="Apple Pay Headless" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {comparisonRows.map((row) => (
+                      <TableRow key={row.feature}>
+                        <TableCell title={row.feature} titleColor="fg" />
+                        <TableCell title={row.onramp} />
+                        <TableCell title={row.offramp} />
+                        <TableCell title={row.fund} />
+                        <TableCell title={row.applePay} />
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Box>
             </div>
           </div>
         </section>
@@ -149,60 +147,62 @@ export default function ComparePage() {
         <section className="py-16 bg-gray-50">
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto">
-              <h2 className="text-3xl font-bold mb-10 text-center">
+              <Text as="h2" font="title1" textAlign="center" className="mb-10">
                 Frequently Asked Questions
-              </h2>
+              </Text>
 
               <div className="space-y-4">
                 <FaqItem
-                  question="What's the difference between Onramp, Offramp, and Fund?"
-                  answer="Onramp allows users to convert fiat currency to cryptocurrency, Offramp enables users to convert cryptocurrency back to fiat, and Fund provides a simple way for users to fund dApps and projects with cryptocurrency directly from their wallet."
+                  question="What's the difference between Onramp, Offramp, Fund, and Apple Pay Headless?"
+                  answer="Onramp sends users to a Coinbase-hosted buy flow, Offramp lets eligible users sell crypto for fiat, Fund gives you OnchainKit components for funding wallets or dApps, and Apple Pay Headless uses the Onramp Order API plus an iframe/webview payment link for a native Apple Pay-style experience inside your app."
                   isOpen={openFaq === 0}
                   onClick={() => toggleFaq(0)}
                 />
 
                 <FaqItem
-                  question="Do I need to implement all three solutions?"
-                  answer="No, you can implement any combination of Onramp, Offramp, and Fund based on your application's needs. Each solution serves a different purpose and can be integrated independently."
+                  question="Do I need to implement every solution?"
+                  answer="No. You can implement any combination based on your product needs. Most teams start with Coinbase-hosted Onramp or Fund for quick integration, then add Offramp or Headless Apple Pay when they need sell flows or a more native in-app payment experience."
                   isOpen={openFaq === 1}
                   onClick={() => toggleFaq(1)}
                 />
 
                 <FaqItem
                   question="What are the integration requirements?"
-                  answer="Onramp and Offramp require a Coinbase Developer Platform account and API keys. Fund integration is even simpler, requiring just a few lines of code using OnchainKit. All solutions offer SDKs and detailed documentation to make integration straightforward."
+                  answer="Onramp and Offramp require a Coinbase Developer Platform project, API credentials, session-token generation, and redirect/domain configuration. Fund requires OnchainKit and project configuration. Apple Pay Headless additionally requires the Create Onramp Order API, verified email and phone collection, a valid US phone number, iframe or webview event handling, and web domain setup for production."
                   isOpen={openFaq === 2}
                   onClick={() => toggleFaq(2)}
                 />
 
                 <FaqItem
                   question="Do users need a Coinbase account?"
-                  answer="For Onramp and Offramp, users don't need a pre-existing Coinbase account, but they will need to complete KYC verification during the process. For Fund, users only need a connected crypto wallet."
+                  answer="For Coinbase-hosted Onramp, Coinbase users can sign in, and supported users can also use Guest Checkout with debit card, Apple Pay, or Google Pay without a Coinbase account. For Offramp and ACH fiat withdrawals, a Coinbase account with linked bank details is required; guest checkout is not supported. Fund uses Coinbase Onramp, so requirements depend on the payment method and region. Apple Pay Headless is a guest-checkout style flow for US users with verified email and valid US phone numbers."
                   isOpen={openFaq === 3}
                   onClick={() => toggleFaq(3)}
                 />
               </div>
 
               <div className="mt-12 text-center">
-                <Link
+                <Button
+                  as="a"
                   href="https://docs.cdp.coinbase.com/onramp/docs/welcome"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center text-indigo-600 hover:text-indigo-700 font-medium"
+                  variant="secondary"
+                  endIcon="arrowRight"
                 >
-                  Explore Onramp/Offramp Documentation{" "}
-                  <span className="ml-2">→</span>
-                </Link>
+                  Explore Onramp/Offramp Documentation
+                </Button>
                 <div className="mt-4">
-                  <Link
+                  <Button
+                    as="a"
                     href="https://docs.base.org/builderkits/onchainkit"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center text-indigo-600 hover:text-indigo-700 font-medium"
+                    variant="secondary"
+                    endIcon="arrowRight"
                   >
-                    Explore OnchainKit Documentation{" "}
-                    <span className="ml-2">→</span>
-                  </Link>
+                    Explore OnchainKit Documentation
+                  </Button>
                 </div>
               </div>
             </div>
@@ -226,12 +226,14 @@ function FaqItem({
   onClick: () => void;
 }) {
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
+    <VStack bordered borderRadius={300} overflow="hidden">
       <button
         className="flex justify-between items-center w-full px-6 py-4 text-left bg-white hover:bg-gray-50 focus:outline-none"
         onClick={onClick}
       >
-        <span className="font-medium text-gray-900">{question}</span>
+        <Text as="span" font="headline">
+          {question}
+        </Text>
         <svg
           className={`w-5 h-5 text-gray-500 transform ${
             isOpen ? "rotate-180" : ""
@@ -250,48 +252,11 @@ function FaqItem({
       </button>
       {isOpen && (
         <div className="px-6 py-4 bg-white border-t border-gray-200">
-          <p className="text-gray-600">{answer}</p>
+          <Text as="p" color="fgMuted">
+            {answer}
+          </Text>
         </div>
       )}
-    </div>
-  );
-}
-
-function FeatureRowWithFund({
-  feature,
-  onramp,
-  offramp,
-  fund,
-  isLastRow = false,
-}: {
-  feature: string;
-  onramp: string;
-  offramp: string;
-  fund: string;
-  isLastRow?: boolean;
-}) {
-  return (
-    <tr className={`hover:bg-gray-50 ${isLastRow ? "border-b-0" : ""}`}>
-      <td
-        className={`px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 bg-gray-50 border-r border-gray-200 ${
-          isLastRow ? "rounded-bl-xl" : ""
-        }`}
-      >
-        {feature}
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">
-        {onramp}
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">
-        {offramp}
-      </td>
-      <td
-        className={`px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center ${
-          isLastRow ? "rounded-br-xl" : ""
-        }`}
-      >
-        {fund}
-      </td>
-    </tr>
+    </VStack>
   );
 }

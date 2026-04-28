@@ -6,6 +6,7 @@ import { rateLimit } from '../../../utils/rateLimit';
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || [
   'http://localhost:3000',
   'http://localhost:3001',
+  'http://localhost:3010',
   // Production domains
   'https://onramp-demo-application-git-main-coinbase-vercel.vercel.app',
   'https://www.onrampdemo.com',
@@ -93,14 +94,15 @@ export async function POST(request: NextRequest) {
     // Generate session token using the existing session API
     // Validate host against trusted domains to prevent SSRF
     const host = request.headers.get('host') || 'localhost:3000';
-    const trustedHosts = [
-      'localhost:3000',
-      'localhost:3001',
+    const hostname = host.split(':')[0];
+    const trustedHostnames = [
+      'localhost',
+      '127.0.0.1',
       'onramp-demo-application-git-main-coinbase-vercel.vercel.app',
       'www.onrampdemo.com',
     ];
     
-    if (!trustedHosts.some(trusted => host.includes(trusted))) {
+    if (!trustedHostnames.includes(hostname)) {
       logger.warn('Untrusted host attempted internal API call', { host });
       return NextResponse.json(
         { error: 'Invalid host' },

@@ -1,6 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { Banner } from "@coinbase/cds-web/banner";
+import { Button } from "@coinbase/cds-web/buttons";
+import { ContentCard, ContentCardBody } from "@coinbase/cds-web/cards";
+import { Box, HStack, VStack } from "@coinbase/cds-web/layout";
+import { SegmentedTabs } from "@coinbase/cds-web/tabs";
+import { Text } from "@coinbase/cds-web/typography";
 import { useCoinbaseRampTransaction } from "../contexts/CoinbaseRampTransactionContext";
 import {
   fetchSellConfig,
@@ -10,39 +16,8 @@ import {
 } from "../utils/offrampApi";
 import { useSearchParams } from "next/navigation";
 import OfframpNotification from "./OfframpNotification";
-
-// Define types for the modal component
-interface SimpleModalProps {
-  title: string;
-  content: React.ReactNode;
-  onClose: () => void;
-  actions: React.ReactNode;
-}
-
-// Simple modal component
-const SimpleModal: React.FC<SimpleModalProps> = ({
-  title,
-  content,
-  onClose,
-  actions,
-}) => (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-lg">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-bold text-gray-900">{title}</h3>
-        <button
-          onClick={onClose}
-          className="text-gray-500 hover:text-gray-700"
-          aria-label="Close"
-        >
-          ✕
-        </button>
-      </div>
-      <div className="mb-4">{content}</div>
-      <div className="flex gap-2">{actions}</div>
-    </div>
-  </div>
-);
+import GeneratedLinkModal from "./GeneratedLinkModal";
+import { CdsSelectField, CdsTextField } from "./CdsFormField";
 
 // Define types for cashout methods
 interface CashoutMethod {
@@ -308,6 +283,10 @@ export default function OfframpFeature() {
 
   // Core states
   const [activeTab, setActiveTab] = useState<"api" | "url">("api");
+  const integrationTabs = [
+    { id: "api", label: "Offramp API" },
+    { id: "url", label: "One-time Payment Link" },
+  ] as const;
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showNotification, setShowNotification] = useState<boolean>(false);
 
@@ -764,255 +743,134 @@ export default function OfframpFeature() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Configuration Box */}
-            <div className="bg-white p-8 rounded-xl shadow-md border border-gray-200">
-              <h3 className="text-xl font-bold mb-6 text-gray-800">
-                Configure Your Offramp
-              </h3>
+            <ContentCard className="cds-card p-8">
+              <ContentCardBody
+                title={<Text as="h3" font="title3">Configure Your Offramp</Text>}
+              >
 
               {/* Tab Selection */}
               <div className="mb-6">
-                <div className="flex space-x-2 mb-2">
-                  <button
-                    className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                      activeTab === "api"
-                        ? "bg-purple-600 text-white"
-                        : "bg-gray-100 text-gray-700 border border-gray-200"
-                    }`}
-                    onClick={() => setActiveTab("api")}
-                  >
-                    Offramp API
-                  </button>
-                  <button
-                    className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                      activeTab === "url"
-                        ? "bg-purple-600 text-white"
-                        : "bg-gray-100 text-gray-700 border border-gray-200"
-                    }`}
-                    onClick={() => setActiveTab("url")}
-                  >
-                    One-time Payment Link
-                  </button>
-                </div>
-                <p className="text-sm text-gray-500">
+                <SegmentedTabs
+                  accessibilityLabel="Switch offramp integration method"
+                  activeTab={integrationTabs.find((tab) => tab.id === activeTab)!}
+                  onChange={(tab) => {
+                    if (tab?.id === "api" || tab?.id === "url") {
+                      setActiveTab(tab.id);
+                    }
+                  }}
+                  tabs={[...integrationTabs]}
+                />
+                <Text as="p" font="label2" color="fgMuted" className="mt-2">
                   {activeTab === "api"
                     ? "Connect your wallet to sell crypto for fiat"
                     : "Generate a link to share with others"}
-                </p>
+                </Text>
               </div>
 
               {/* Embedded Wallet Required Message */}
               {activeTab === "api" && !isConnected && (
                 <div className="mb-6">
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-800">
-                      <strong>Note:</strong> Offramp requires CDP Embedded Wallet. Please sign in using the "Sign in" button in the header to continue.
-                    </p>
-                  </div>
+                  <Banner
+                    startIcon="info"
+                    startIconActive
+                    styleVariant="inline"
+                    title="Offramp requires CDP Embedded Wallet"
+                    variant="informational"
+                  >
+                    <Text as="p" font="label2">
+                      Please sign in using the Sign in button in the header to continue.
+                    </Text>
+                  </Banner>
                 </div>
               )}
 
-              {/* Country Selection */}
-              <div className="mb-6">
-                <label className="block text-gray-700 mb-2 font-medium">
-                  Country
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedCountry}
-                    onChange={(e) => {
-                      setSelectedCountry(e.target.value);
-                      // Reset subdivision when country changes
-                      setSelectedSubdivision("");
-                    }}
-                    className="block w-full bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
-                  >
-                    {countries.map((country) => (
-                      <option key={country.code} value={country.code}>
-                        {country.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                    <svg
-                      className="fill-current h-4 w-4"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              {/* State Selection - Only show for US */}
-              {selectedCountry === "US" && (
-                <div className="mb-6">
-                  <label className="block text-gray-700 mb-2 font-medium">
-                    State
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={selectedSubdivision}
-                      onChange={(e) => setSelectedSubdivision(e.target.value)}
-                      className="block w-full bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
-                    >
-                      {US_STATES.map((state) => (
-                        <option key={state.code} value={state.code}>
-                          {state.name}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                      <svg
-                        className="fill-current h-4 w-4"
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                      >
-                        <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Asset Selection */}
-              <div className="mb-6">
-                <label className="block text-gray-700 mb-2 font-medium">
-                  Asset
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedAsset}
-                    onChange={(e) => handleAssetChange(e.target.value)}
-                    className="block w-full bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
-                  >
-                    {availableAssets.map((asset) => (
-                      <option key={asset.code} value={asset.code}>
-                        {asset.name} ({asset.code})
-                      </option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                    <svg
-                      className="fill-current h-4 w-4"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              {/* Network Selection */}
-              <div className="mb-6">
-                <label className="block text-gray-700 mb-2 font-medium">
-                  Network
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedNetwork}
-                    onChange={(e) => setSelectedNetwork(e.target.value)}
-                    className="block w-full bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
-                  >
-                    {/* Filter networks based on selected asset */}
-                    {networks
-                      .filter(
-                        (network) =>
-                          !assetNetworkMap[selectedAsset] ||
-                          assetNetworkMap[selectedAsset].includes(network.id)
-                      )
-                      .map((network) => (
-                        <option key={network.id} value={network.id}>
-                          {network.name}
-                        </option>
-                      ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                    <svg
-                      className="fill-current h-4 w-4"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                    </svg>
-                  </div>
-                </div>
-                {assetNetworkMap[selectedAsset] && (
-                  <p className="text-sm text-gray-500 mt-2">
-                    {selectedAsset} is available on{" "}
-                    {assetNetworkMap[selectedAsset].length} network
-                    {assetNetworkMap[selectedAsset].length > 1 ? "s" : ""}
-                  </p>
-                )}
-              </div>
-
-              {/* Amount Input */}
-              <div className="mb-4">
-                <label className="block text-gray-700 mb-2 font-medium">
-                  Amount
-                </label>
-                <div className="flex space-x-2 mb-2">
-                  <button
-                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg text-gray-800"
-                    onClick={() => setAmount("10")}
-                  >
-                    $10
-                  </button>
-                  <button
-                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg text-gray-800"
-                    onClick={() => setAmount("25")}
-                  >
-                    $25
-                  </button>
-                  <button
-                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg text-gray-800"
-                    onClick={() => setAmount("50")}
-                  >
-                    $50
-                  </button>
-                </div>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
-                    $
-                  </span>
-                  <input
-                    type="text"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="block w-full bg-white border border-gray-300 rounded-lg py-3 pl-8 pr-4 text-gray-800"
+              <VStack gap={3}>
+                <CdsSelectField
+                  label="Country"
+                  value={selectedCountry}
+                  onChange={(value) => {
+                    setSelectedCountry(value);
+                    setSelectedSubdivision("");
+                  }}
+                  options={countries.map((country) => ({
+                    value: country.code,
+                    label: country.name,
+                  }))}
+                />
+                {selectedCountry === "US" && (
+                  <CdsSelectField
+                    label="State"
+                    value={selectedSubdivision}
+                    onChange={setSelectedSubdivision}
+                    options={US_STATES.map((state) => ({
+                      value: state.code,
+                      label: state.name,
+                    }))}
                   />
-                </div>
-              </div>
-
-              {/* Cashout Method */}
-              <div className="mb-6">
-                <label className="block text-gray-700 mb-2 font-medium">
-                  Cashout Method
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedCashoutMethod}
-                    onChange={(e) => setSelectedCashoutMethod(e.target.value)}
-                    className="block w-full bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
-                  >
-                    {cashoutMethods.map((method) => (
-                      <option key={method.id} value={method.id}>
-                        {method.name}
-                      </option>
+                )}
+                <CdsSelectField
+                  label="Asset"
+                  value={selectedAsset}
+                  onChange={handleAssetChange}
+                  options={availableAssets.map((asset) => ({
+                    value: asset.code,
+                    label: `${asset.name} (${asset.code})`,
+                  }))}
+                />
+                <CdsSelectField
+                  label="Network"
+                  value={selectedNetwork}
+                  onChange={setSelectedNetwork}
+                  helperText={
+                    assetNetworkMap[selectedAsset]
+                      ? `${selectedAsset} is available on ${
+                          assetNetworkMap[selectedAsset].length
+                        } network${
+                          assetNetworkMap[selectedAsset].length > 1 ? "s" : ""
+                        }`
+                      : undefined
+                  }
+                  options={networks
+                    .filter(
+                      (network) =>
+                        !assetNetworkMap[selectedAsset] ||
+                        assetNetworkMap[selectedAsset].includes(network.id)
+                    )
+                    .map((network) => ({
+                      value: network.id,
+                      label: network.name,
+                    }))}
+                />
+                <VStack gap={1}>
+                  <HStack gap={1}>
+                    {["10", "25", "50"].map((preset) => (
+                      <Button
+                        key={preset}
+                        variant={amount === preset ? "primary" : "secondary"}
+                        className="cds-preset-amount-button"
+                        onClick={() => setAmount(preset)}
+                      >
+                        ${preset}
+                      </Button>
                     ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                    <svg
-                      className="fill-current h-4 w-4"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
+                  </HStack>
+                  <CdsTextField
+                    label="Amount"
+                    value={amount}
+                    onChange={setAmount}
+                    start="$"
+                  />
+                </VStack>
+                <CdsSelectField
+                  label="Cashout Method"
+                  value={selectedCashoutMethod}
+                  onChange={setSelectedCashoutMethod}
+                  options={cashoutMethods.map((method) => ({
+                    value: method.id,
+                    label: method.name,
+                  }))}
+                />
+              </VStack>
 
               {/* Advanced Options */}
               <div className="mb-8">
@@ -1070,14 +928,13 @@ export default function OfframpFeature() {
               </div>
 
               {/* Action Button */}
-              <button
+              <Button
+                block
+                variant="primary"
+                className="cds-primary-cta"
                 onClick={activeTab === "api" ? handleOfframp : handleGenerateUrl}
                 disabled={!isConnected || isGeneratingToken}
-                className={`w-full font-medium py-3 px-4 rounded-lg transition-all shadow-md hover:shadow-lg ${
-                  !isConnected || isGeneratingToken
-                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700 text-white"
-                }`}
+                loading={isGeneratingToken}
               >
                 {isGeneratingToken 
                   ? "Generating Session Token..." 
@@ -1085,19 +942,30 @@ export default function OfframpFeature() {
                     ? "Sell Crypto Now" 
                     : "Generate Offramp URL"
                 }
-              </button>
+              </Button>
 
               {/* Error Message */}
               {errorMessage && (
-                <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-lg border border-red-200">
-                  {errorMessage}
-                </div>
+                <Box className="mt-4">
+                  <Banner
+                    startIcon="error"
+                    startIconActive
+                    styleVariant="inline"
+                    title="Could not create offramp"
+                    variant="error"
+                  >
+                    <Text as="p" font="label2">
+                      {errorMessage}
+                    </Text>
+                  </Banner>
+                </Box>
               )}
-            </div>
+              </ContentCardBody>
+            </ContentCard>
 
             {/* Preview Box */}
-            <div className="bg-white p-8 rounded-xl shadow-md border border-gray-200">
-              <h3 className="text-xl font-bold mb-6 text-gray-800">Preview</h3>
+            <ContentCard className="cds-card p-8">
+              <ContentCardBody title={<Text as="h3" font="title3">Preview</Text>}>
 
               {activeTab === "api" ? (
                 <div className="flex flex-col items-center justify-center h-full">
@@ -1172,44 +1040,20 @@ export default function OfframpFeature() {
                   </button>
                 </div>
               )}
-            </div>
+              </ContentCardBody>
+            </ContentCard>
           </div>
         </div>
       </div>
 
       {/* URL Modal */}
       {showUrlModal && (
-        <SimpleModal
+        <GeneratedLinkModal
           title="Generated Offramp URL"
-          content={
-            <div>
-              <p className="text-gray-700 mb-2">
-                Use this URL to redirect users to Coinbase:
-              </p>
-              <div className="bg-purple-50 p-3 rounded-lg border border-purple-100 overflow-hidden">
-                <div className="text-xs text-gray-800 break-all max-h-32 overflow-y-auto">
-                  {generatedUrl}
-                </div>
-              </div>
-            </div>
-          }
+          url={generatedUrl}
           onClose={() => setShowUrlModal(false)}
-          actions={
-            <>
-              <button
-                onClick={handleCopyUrl}
-                className="flex-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 py-2 px-4 rounded-lg font-medium"
-              >
-                Copy URL
-              </button>
-              <button
-                onClick={handleOpenUrl}
-                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg font-medium"
-              >
-                Open URL
-              </button>
-            </>
-          }
+          onCopy={handleCopyUrl}
+          onOpen={handleOpenUrl}
         />
       )}
 

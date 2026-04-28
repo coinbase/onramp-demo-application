@@ -1,6 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { Banner } from "@coinbase/cds-web/banner";
+import { Button } from "@coinbase/cds-web/buttons";
+import { ContentCard, ContentCardBody } from "@coinbase/cds-web/cards";
+import { Box, HStack, VStack } from "@coinbase/cds-web/layout";
+import { SegmentedTabs } from "@coinbase/cds-web/tabs";
+import { Text } from "@coinbase/cds-web/typography";
 import { useCoinbaseRampTransaction } from "../contexts/CoinbaseRampTransactionContext";
 import { generateOnrampURL } from "../utils/rampUtils";
 import {
@@ -14,6 +20,7 @@ import {
   PaymentCurrency,
 } from "../utils/onrampApi";
 import GeneratedLinkModal from "./GeneratedLinkModal";
+import { CdsSelectField, CdsTextField } from "./CdsFormField";
 import { fetchCryptoPrices } from "../utils/priceUtils";
 
 // Define payment method descriptions
@@ -164,6 +171,10 @@ export default function OnrampFeature() {
   const address = authenticated ? rampTransaction?.wallet : undefined;
   const isConnected = authenticated && !!rampTransaction?.wallet;
   const [activeTab, setActiveTab] = useState<"api" | "url">("api");
+  const integrationTabs = [
+    { id: "api", label: "Onramp API" },
+    { id: "url", label: "One-time Payment Link" },
+  ] as const;
   const [selectedAsset, setSelectedAsset] = useState("USDC");
   const [amount, setAmount] = useState("10");
   const [selectedNetwork, setSelectedNetwork] = useState("base");
@@ -612,282 +623,141 @@ export default function OnrampFeature() {
       <div className="container mx-auto px-4">
         <div className="max-w-5xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-md border border-gray-100 dark:border-gray-700">
-              <h3 className="text-xl font-bold mb-6 dark:text-white">
-                Configure Your Onramp
-              </h3>
+            <ContentCard className="cds-card p-8">
+              <ContentCardBody
+                title={<Text as="h3" font="title3">Configure Your Onramp</Text>}
+              >
 
               {/* Integration Method Tabs */}
               <div className="mb-8">
-                <div className="flex space-x-2 mb-4">
-                  <button
-                    className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                      activeTab === "api"
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200"
-                    }`}
-                    onClick={() => setActiveTab("api")}
-                    aria-label="Switch to Onramp API"
-                  >
-                    Onramp API
-                  </button>
-                  <button
-                    className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                      activeTab === "url"
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200"
-                    }`}
-                    onClick={() => setActiveTab("url")}
-                    aria-label="Switch to One-time Payment Link"
-                  >
-                    One-time Payment Link
-                  </button>
-                </div>
+                <SegmentedTabs
+                  accessibilityLabel="Switch onramp integration method"
+                  activeTab={integrationTabs.find((tab) => tab.id === activeTab)!}
+                  onChange={(tab) => {
+                    if (tab?.id === "api" || tab?.id === "url") {
+                      setActiveTab(tab.id);
+                    }
+                  }}
+                  tabs={[...integrationTabs]}
+                />
               </div>
 
               {/* Embedded Wallet Required Message */}
               {!isConnected && (
                 <div className="mb-6">
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-800">
-                      <strong>Note:</strong> Onramp requires CDP Embedded Wallet. Please sign in using the "Sign in" button in the header to continue.
-                    </p>
-                  </div>
+                  <Banner
+                    startIcon="info"
+                    startIconActive
+                    styleVariant="inline"
+                    title="Onramp requires CDP Embedded Wallet"
+                    variant="informational"
+                  >
+                    <Text as="p" font="label2">
+                      Please sign in using the Sign in button in the header to continue.
+                    </Text>
+                  </Banner>
                 </div>
               )}
 
-              {/* Country Selection */}
-              <div className="mb-6">
-                <label className="block text-gray-700 mb-2 font-medium">
-                  Country
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedCountry}
-                    onChange={(e) => setSelectedCountry(e.target.value)}
-                    className="block w-full bg-white text-gray-800 border border-gray-300 rounded-lg py-3 px-4 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    {countryList.map((country) => (
-                      <option key={country.code} value={country.code}>
-                        {country.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                    <svg
-                      className="fill-current h-4 w-4"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              {/* State Selection */}
-              <div className="mb-6">
-                <label className="block text-gray-700 mb-2 font-medium">
-                  State
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedState}
-                    onChange={(e) => setSelectedState(e.target.value)}
-                    className="block w-full bg-white text-gray-800 border border-gray-300 rounded-lg py-3 px-4 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    {US_STATES.map((state) => (
-                      <option key={state.code} value={state.code}>
-                        {state.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                    <svg
-                      className="fill-current h-4 w-4"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              {/* Asset Selection */}
-              <div className="mb-6">
-                <label className="block text-gray-700 mb-2 font-medium">
-                  Select Asset
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedAsset}
-                    onChange={(e) => handleAssetChange(e.target.value)}
-                    className="block w-full bg-white text-gray-800 border border-gray-300 rounded-lg py-3 px-4 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    {assets.map((asset) => (
-                      <option key={asset.symbol} value={asset.symbol}>
-                        {asset.name} ({asset.symbol})
-                      </option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                    <svg
-                      className="fill-current h-4 w-4"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              {/* Network Selection - Moved right after Asset Selection */}
-              <div className="mb-6">
-                <label className="block text-gray-700 mb-2 font-medium">
-                  Network
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedNetwork}
-                    onChange={(e) => setSelectedNetwork(e.target.value)}
-                    className="block w-full bg-white text-gray-800 border border-gray-300 rounded-lg py-3 px-4 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    {/* Filter networks based on selected asset */}
-                    {networks
-                      .filter(
-                        (network) =>
-                          !assetNetworkMap[selectedAsset] ||
-                          assetNetworkMap[selectedAsset].includes(network.id)
-                      )
-                      .map((network) => (
-                        <option key={network.id} value={network.id}>
-                          {network.name}
-                        </option>
-                      ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                    <svg
-                      className="fill-current h-4 w-4"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                    </svg>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-500 mt-2">
-                  {assetNetworkMap[selectedAsset] &&
-                    `${selectedAsset} is available on ${
-                      assetNetworkMap[selectedAsset].length
-                    } network${
-                      assetNetworkMap[selectedAsset].length > 1 ? "s" : ""
-                    }`}
-                </p>
-              </div>
+              <VStack gap={3}>
+                <CdsSelectField
+                  label="Country"
+                  value={selectedCountry}
+                  onChange={setSelectedCountry}
+                  options={countryList.map((country) => ({
+                    value: country.code,
+                    label: country.name,
+                  }))}
+                />
+                <CdsSelectField
+                  label="State"
+                  value={selectedState}
+                  onChange={setSelectedState}
+                  options={US_STATES.map((state) => ({
+                    value: state.code,
+                    label: state.name,
+                  }))}
+                />
+                <CdsSelectField
+                  label="Select Asset"
+                  value={selectedAsset}
+                  onChange={handleAssetChange}
+                  options={assets.map((asset) => ({
+                    value: asset.symbol,
+                    label: `${asset.name} (${asset.symbol})`,
+                  }))}
+                />
+                <CdsSelectField
+                  label="Network"
+                  value={selectedNetwork}
+                  onChange={setSelectedNetwork}
+                  helperText={
+                    assetNetworkMap[selectedAsset]
+                      ? `${selectedAsset} is available on ${
+                          assetNetworkMap[selectedAsset].length
+                        } network${
+                          assetNetworkMap[selectedAsset].length > 1 ? "s" : ""
+                        }`
+                      : undefined
+                  }
+                  options={networks
+                    .filter(
+                      (network) =>
+                        !assetNetworkMap[selectedAsset] ||
+                        assetNetworkMap[selectedAsset].includes(network.id)
+                    )
+                    .map((network) => ({
+                      value: network.id,
+                      label: network.name,
+                    }))}
+                />
+              </VStack>
 
               {/* Amount Input */}
-              <div className="mb-6">
-                <label className="block text-gray-700 mb-2 font-medium">
-                  Amount
-                </label>
-                <div className="flex space-x-2 mb-2">
-                  <button
-                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-gray-800 font-medium transition-colors"
-                    onClick={() => setAmount("10")}
-                  >
-                    {getCurrencySymbol(selectedPaymentCurrency)}10
-                  </button>
-                  <button
-                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-gray-800 font-medium transition-colors"
-                    onClick={() => setAmount("25")}
-                  >
-                    {getCurrencySymbol(selectedPaymentCurrency)}25
-                  </button>
-                  <button
-                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-gray-800 font-medium transition-colors"
-                    onClick={() => setAmount("50")}
-                  >
-                    {getCurrencySymbol(selectedPaymentCurrency)}50
-                  </button>
-                </div>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-700">
-                    {getCurrencySymbol(selectedPaymentCurrency)}
-                  </span>
-                  <input
-                    type="text"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="block w-full bg-white border border-gray-300 rounded-lg py-3 pl-8 pr-4 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter amount"
-                  />
-                </div>
-              </div>
-
-              {/* Payment Currency Selection */}
-              <div className="mb-6">
-                <label className="block text-gray-700 mb-2 font-medium">
-                  Payment Currency
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedPaymentCurrency}
-                    onChange={(e) => setSelectedPaymentCurrency(e.target.value)}
-                    className="block w-full bg-white text-gray-800 border border-gray-300 rounded-lg py-3 px-4 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    {paymentCurrencies.map((currency) => (
-                      <option key={currency.code} value={currency.code}>
-                        {currency.name} ({currency.code})
-                      </option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                    <svg
-                      className="fill-current h-4 w-4"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
+              <VStack gap={1} className="my-6">
+                <HStack gap={1}>
+                  {["10", "25", "50"].map((preset) => (
+                    <Button
+                      key={preset}
+                      variant={amount === preset ? "primary" : "secondary"}
+                      className="cds-preset-amount-button"
+                      onClick={() => setAmount(preset)}
                     >
-                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
+                      {getCurrencySymbol(selectedPaymentCurrency)}
+                      {preset}
+                    </Button>
+                  ))}
+                </HStack>
+                <CdsTextField
+                  label="Amount"
+                  value={amount}
+                  onChange={setAmount}
+                  placeholder="Enter amount"
+                  start={getCurrencySymbol(selectedPaymentCurrency)}
+                />
+              </VStack>
 
-              {/* Payment Method Selection */}
-              <div className="mb-6">
-                <label className="block text-gray-700 mb-2 font-medium">
-                  Payment Method
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedPaymentMethod}
-                    onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                    className="block w-full bg-white text-gray-800 border border-gray-300 rounded-lg py-3 px-4 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    {paymentMethods.map((method) => (
-                      <option key={method.id} value={method.id}>
-                        {method.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                    <svg
-                      className="fill-current h-4 w-4"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                    </svg>
-                  </div>
-                </div>
-                {PAYMENT_METHOD_DESCRIPTIONS[selectedPaymentMethod] && (
-                  <p className="text-sm text-gray-500 mt-2">
-                    {PAYMENT_METHOD_DESCRIPTIONS[selectedPaymentMethod]}
-                  </p>
-                )}
-              </div>
+              <VStack gap={3}>
+                <CdsSelectField
+                  label="Payment Currency"
+                  value={selectedPaymentCurrency}
+                  onChange={setSelectedPaymentCurrency}
+                  options={paymentCurrencies.map((currency) => ({
+                    value: currency.code,
+                    label: `${currency.name} (${currency.code})`,
+                  }))}
+                />
+                <CdsSelectField
+                  label="Payment Method"
+                  value={selectedPaymentMethod}
+                  onChange={setSelectedPaymentMethod}
+                  helperText={PAYMENT_METHOD_DESCRIPTIONS[selectedPaymentMethod]}
+                  options={paymentMethods.map((method) => ({
+                    value: method.id,
+                    label: method.name,
+                  }))}
+                />
+              </VStack>
 
               {/* Guest Checkout Option */}
               <div className="mb-6">
@@ -933,14 +803,13 @@ export default function OnrampFeature() {
               </div>
 
               {/* Action Button */}
-              <button
+              <Button
+                block
+                variant="primary"
+                className="cds-primary-cta"
                 onClick={activeTab === "api" ? handleOnramp : handleGenerateUrl}
                 disabled={!isConnected || isGeneratingToken}
-                className={`w-full font-medium py-3 px-4 rounded-lg transition-all shadow-md hover:shadow-lg ${
-                  !isConnected || isGeneratingToken
-                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700 text-white"
-                }`}
+                loading={isGeneratingToken}
               >
                 {isGeneratingToken 
                   ? "Generating Session Token..." 
@@ -948,14 +817,13 @@ export default function OnrampFeature() {
                     ? "Buy Crypto Now" 
                     : "Generate Payment URL"
                 }
-              </button>
-            </div>
+              </Button>
+              </ContentCardBody>
+            </ContentCard>
 
             {/* Preview Section */}
-            <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 flex flex-col">
-              <h3 className="text-xl font-bold mb-6 dark:text-white">
-                Preview
-              </h3>
+            <ContentCard className="cds-card p-8 flex flex-col">
+              <ContentCardBody title={<Text as="h3" font="title3">Preview</Text>}>
 
               <div className="flex-grow flex items-center justify-center">
                 {activeTab === "api" ? (
@@ -1066,16 +934,17 @@ export default function OnrampFeature() {
                         )?.name || selectedPaymentMethod}
                       </div>
                     </div>
-                    <button
+                    <Button
+                      block
                       onClick={handleGenerateUrl}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-all"
                     >
                       Generate Link
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
-            </div>
+              </ContentCardBody>
+            </ContentCard>
           </div>
 
           {/* URL Modal */}

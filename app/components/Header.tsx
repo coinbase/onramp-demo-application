@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { Text } from "@coinbase/cds-web/typography";
 import { EmbeddedWalletAuth } from "./EmbeddedWalletAuth";
 
 export function Header() {
@@ -22,13 +23,13 @@ export function Header() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`cds-header fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled
-          ? "bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-md py-3"
-          : "bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm py-4 shadow-sm"
+          ? "backdrop-blur-md py-3"
+          : "backdrop-blur-sm py-4"
       }`}
     >
-      <div className="container mx-auto px-4">
+      <div className="cds-container">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center">
             <div className="h-10 mr-3">
@@ -40,9 +41,9 @@ export function Header() {
                 className="rounded-lg"
               />
             </div>
-            <span className="font-bold text-xl text-gray-900 dark:text-white">
+            <Text as="span" font="title4" className="text-cds-fg">
               Coinbase Onramp & Offramp
-            </span>
+            </Text>
           </Link>
 
           {/* Desktop Navigation */}
@@ -50,42 +51,36 @@ export function Header() {
             <NavLink
               href="/"
               isActive={pathname === "/"}
-              isScrolled={isScrolled}
             >
               Home
             </NavLink>
             <NavLink
               href="/onramp"
               isActive={pathname === "/onramp"}
-              isScrolled={isScrolled}
             >
               Onramp
             </NavLink>
             <NavLink
               href="/offramp"
               isActive={pathname === "/offramp"}
-              isScrolled={isScrolled}
             >
               Offramp
             </NavLink>
             <NavLink
               href="/apple-pay"
               isActive={pathname === "/apple-pay"}
-              isScrolled={isScrolled}
             >
               Apple Pay
             </NavLink>
             <NavLink
               href="/fund"
               isActive={pathname === "/fund"}
-              isScrolled={isScrolled}
             >
               Fund
             </NavLink>
             <NavLink
               href="/compare"
               isActive={pathname === "/compare"}
-              isScrolled={isScrolled}
             >
               Compare
             </NavLink>
@@ -97,13 +92,13 @@ export function Header() {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white focus:outline-none"
+            className="md:hidden text-cds-muted hover:text-cds-fg focus:outline-none"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
             {isMobileMenuOpen ? (
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
+                className="cds-icon h-6 w-6"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -118,7 +113,7 @@ export function Header() {
             ) : (
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
+                className="cds-icon h-6 w-6"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -137,7 +132,7 @@ export function Header() {
 
       {/* Mobile Navigation */}
       {isMobileMenuOpen && (
-        <div className="md:hidden bg-white dark:bg-gray-800 shadow-lg rounded-b-lg mt-2 py-4 px-4 absolute left-4 right-4">
+        <div className="cds-surface md:hidden mt-2 py-4 px-4 absolute left-4 right-4">
           <nav className="flex flex-col space-y-3">
             <MobileNavLink
               href="/"
@@ -182,7 +177,7 @@ export function Header() {
               Compare
             </MobileNavLink>
 
-            <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+            <div className="pt-3 border-t border-cds-line">
               <EmbeddedWalletAuth />
             </div>
           </nav>
@@ -196,27 +191,22 @@ function NavLink({
   href,
   children,
   isActive,
-  isScrolled,
 }: {
   href: string;
   children: React.ReactNode;
   isActive: boolean;
-  isScrolled: boolean;
 }) {
-  const baseClasses = "px-4 py-2 rounded-lg font-medium transition-colors";
-
-  const activeClasses =
-    "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 shadow-sm";
-
-  const inactiveClasses =
-    "text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/70 hover:text-blue-600 dark:hover:text-blue-300";
+  const baseClasses = "cds-nav-link px-4 py-2 font-medium transition-colors";
+  const activeClasses = "cds-nav-link-active";
 
   return (
     <Link
       href={href}
-      className={`${baseClasses} ${isActive ? activeClasses : inactiveClasses}`}
+      className={`${baseClasses} ${isActive ? activeClasses : ""}`}
     >
-      {children}
+      <Text as="span" font="label1">
+        {children}
+      </Text>
     </Link>
   );
 }
@@ -235,14 +225,14 @@ function MobileNavLink({
   return (
     <Link
       href={href}
-      className={`px-4 py-2 rounded-lg font-medium ${
-        isActive
-          ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300"
-          : "text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/70"
+      className={`cds-nav-link px-4 py-2 font-medium ${
+        isActive ? "cds-nav-link-active" : ""
       }`}
       onClick={onClick}
     >
-      {children}
+      <Text as="span" font="label1">
+        {children}
+      </Text>
     </Link>
   );
 }

@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { SiweMessage } from 'siwe';
 
-export async function GET(request: NextRequest) {
+async function parseJsonBody(request: Request) {
+  const rawBody = await request.text();
+  if (!rawBody) {
+    return null;
+  }
+
+  return JSON.parse(rawBody);
+}
+
+export async function GET() {
   // Only return non-sensitive configuration
   return NextResponse.json({
     projectName: process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME,
@@ -11,8 +21,39 @@ export async function GET(request: NextRequest) {
 // This endpoint will be used for authenticated requests that need API keys
 export async function POST(request: NextRequest) {
   try {
-    // In a real app, you would validate the request here
-    // For example, check for a valid session or API token
+    const body = await parseJsonBody(request);
+
+    if (body?.message && body?.signature) {
+      const siweMessage = new SiweMessage(body.message);
+      const verification = await siweMessage.verify({
+        signature: body.signature,
+        domain: request.headers.get('host') || undefined,
+      });
+
+      if (!verification.success) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Invalid wallet signature',
+          },
+          { status: 401 }
+        );
+      }
+
+      const response = NextResponse.json({
+        success: true,
+        address: verification.data.address,
+      });
+
+      response.cookies.set('coinbase-ramp-demo-app-auth', 'true', {
+        httpOnly: false,
+        sameSite: 'strict',
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+      });
+
+      return response;
+    }
 
     // Log environment variables for debugging (without exposing actual values)
     console.log('Environment variables in API route:', {

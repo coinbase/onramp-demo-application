@@ -1,4 +1,7 @@
 import "@coinbase/onchainkit/styles.css";
+import "@coinbase/cds-icons/fonts/web/icon-font.css";
+import "@coinbase/cds-web/defaultFontStyles";
+import "@coinbase/cds-web/globalStyles";
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
@@ -34,8 +37,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="light">
-      <body className="bg-background">
+    <html lang="en" className="light cds-default">
+      <body className="bg-background text-foreground">
         <Providers>{children}</Providers>
       </body>
     </html>

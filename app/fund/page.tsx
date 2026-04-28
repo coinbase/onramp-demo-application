@@ -4,20 +4,14 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
-import { FundCardDemo } from "../components/FundCardDemo";
 import { FundButton } from "../components/FundButton";
-import { SimpleFundCard } from "../components/SimpleFundCard";
 import { FundCardWithSessionToken } from "../components/FundCardWithSessionToken";
 import { useCoinbaseRampTransaction } from "../contexts/CoinbaseRampTransactionContext";
-import { CustomIntegrationDemo } from "../components/CustomIntegrationDemo";
-import { useAccount } from "wagmi";
-import { FundCard } from "@coinbase/onchainkit/fund";
+import PageHero from "../components/PageHero";
 
 export default function FundPage() {
-  const [isLoading, setIsLoading] = useState(true);
-  const { selectedCountry, selectedSubdivision, selectedCurrency } =
-    useCoinbaseRampTransaction();
-  const { isConnected } = useAccount();
+  const { authenticated, rampTransaction } = useCoinbaseRampTransaction();
+  const isConnected = authenticated && !!rampTransaction?.wallet;
 
   // Fund Button configuration
   const [hideIcon, setHideIcon] = useState(false);
@@ -71,77 +65,40 @@ export default function FundPage() {
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-grow">
-        {/* Modern hero section with gradient background */}
-        <section className="relative overflow-hidden">
-          {/* Modern gradient background */}
-          <div className="absolute inset-0 bg-[#fafafa] dark:bg-[#111] z-0">
-            <div className="absolute inset-0 bg-gradient-to-br from-amber-50 via-white to-amber-50 dark:from-amber-900/30 dark:via-[#131313] dark:to-amber-900/30 opacity-80"></div>
-
-            {/* Subtle grid pattern */}
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGZpbGw9IiNmMWYxZjEiIGQ9Ik0zNiAxOGgtMnYyaDJ6TTQwIDE4aC0ydjJoMnpNNDQgMThoLTJ2Mmgyek0zNCAxNmgtMnYyaDJ6TTM4IDE2aC0ydjJoMnpNNDIgMTZoLTJ2Mmgyek0zMCAxNmgtMnYyaDJ6TTI2IDE2aC0ydjJoMnpNMjIgMTZoLTJ2Mmgyek0xOCAxNmgtMnYyaDJ6TDE0IDE2aC0ydjJoMnpNMTAgMTZIOHYyaDJ6TTYgMTZINHYyaDJ6Ii8+PC9nPjwvc3ZnPg==')] opacity-[0.15] dark:opacity-[0.05]"></div>
-          </div>
-
-          {/* Subtle gradient orb */}
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute top-20 right-10 w-[500px] h-[500px] bg-amber-400 dark:bg-amber-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-10 animate-float"></div>
-          </div>
-
-          <div className="container mx-auto px-4 pt-28 pb-16 relative z-10">
-            <div className="max-w-4xl mx-auto text-center">
-              <div className="inline-flex items-center px-4 py-2 rounded-full bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 mb-6">
-                <span className="w-2 h-2 rounded-full bg-amber-500 mr-2"></span>
-                <span className="text-amber-700 dark:text-amber-300 text-sm font-medium whitespace-nowrap">
-                  Powered by Coinbase Developer Platform
-                </span>
-              </div>
-
-              <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-600 dark:from-amber-400 dark:via-yellow-400 dark:to-amber-400 tracking-tight">
-                Fund with OnchainKit
-              </h1>
-
-              <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-                Integrate Coinbase's Fund Button and Fund Card features to
-                enable crypto funding for your dApp or project with just a few
-                lines of code.
+        <PageHero
+          eyebrow="Powered by Coinbase Developer Platform"
+          title="Fund with OnchainKit"
+          description="Integrate Coinbase's Fund Button and Fund Card features to enable crypto funding for your dApp or project with just a few lines of code."
+          docsHref="https://docs.base.org/builderkits/onchainkit/fund/fund-button"
+        >
+          {!isConnected && (
+            <div className="cds-surface p-4 mb-6 max-w-3xl mx-auto text-left">
+              <p className="text-cds-muted text-sm md:text-base">
+                <span className="font-semibold text-cds-fg">Note:</span> Fund
+                features require CDP Embedded Wallet. Please sign in with your
+                embedded wallet to test the functionality.
               </p>
-
-              <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-8 max-w-3xl mx-auto">
-                <p className="text-blue-700 dark:text-blue-300 text-sm md:text-base">
-                  <span className="font-medium">Note:</span> Fund features require CDP Embedded Wallet.
-                  Please sign in with your embedded wallet to test the functionality.
-                </p>
-              </div>
-              <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-8 max-w-3xl mx-auto">
-                <p className="text-red-700 dark:text-red-300 text-sm md:text-base">
-                  <span className="font-medium">Important:</span> Solana is not
-                  supported with Fund components. However, you can use the{" "}
-                  <code className="bg-red-100 dark:bg-red-800 px-1 py-0.5 rounded">
-                    getOnrampBuyUrl
-                  </code>{" "}
-                  utility to generate a custom URL client-side that supports
-                  Solana.
-                  <a
-                    href="https://docs.base.org/builderkits/onchainkit/fund/get-onramp-buy-url"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block mt-2 text-red-600 dark:text-red-400 hover:underline"
-                  >
-                    Learn how to use getOnrampBuyUrl for Solana →
-                  </a>
-                </p>
-              </div>
-
-              <Link
-                href="https://docs.base.org/builderkits/onchainkit/fund/fund-button"
+            </div>
+          )}
+          <div className="cds-surface p-4 mb-8 max-w-3xl mx-auto text-left">
+            <p className="text-cds-muted text-sm md:text-base">
+              <span className="font-semibold text-cds-fg">Important:</span>{" "}
+              Solana is not supported with Fund components. Use{" "}
+              <code className="bg-cds-tertiary px-1 py-0.5 rounded-cds">
+                getOnrampBuyUrl
+              </code>{" "}
+              to generate a custom client-side URL that supports Solana.
+              <a
+                href="https://docs.base.org/builderkits/onchainkit/fund/get-onramp-buy-url"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium mb-10"
+                className="block mt-2 text-cds-fg-primary hover:underline"
               >
-                View Documentation <span className="ml-2">→</span>
-              </Link>
-            </div>
+                Learn how to use getOnrampBuyUrl for Solana -&gt;
+              </a>
+            </p>
           </div>
-        </section>
+        </PageHero>
 
         {/* Fund Card Section */}
         <section className="py-16 bg-gray-50 dark:bg-gray-800">
@@ -389,7 +346,7 @@ export default function FundPage() {
                   <div className="flex-grow flex items-center justify-center">
                     {isConnected ? (
                       <div className="w-full max-w-sm">
-                        {/* Using custom FundCardWithSessionToken for secure initialization */}
+                        {/* Secure init via custom FundCard wrapper */}
                         <FundCardWithSessionToken
                           assetSymbol={assetSymbol}
                           country={country}
@@ -397,20 +354,27 @@ export default function FundPage() {
                           headerText={headerText}
                           buttonText={buttonText}
                           presetAmountInputs={
-                            showPresetAmounts && presetAmountInputs.length === 3
-                              ? ([presetAmountInputs[0], presetAmountInputs[1], presetAmountInputs[2]] as const)
+                            showPresetAmounts &&
+                            presetAmountInputs.length === 3
+                              ? ([
+                                  presetAmountInputs[0],
+                                  presetAmountInputs[1],
+                                  presetAmountInputs[2],
+                                ] as const)
                               : undefined
                           }
                         />
                         
-                        {/* Note: The default <FundCard /> component doesn't support session tokens
-                            when "Enforce secure initialization" is enabled in CDP Dashboard.
-                            We use a custom implementation that generates session tokens server-side. */}
+                        {/*
+                          Default FundCard does not support secure init tokens.
+                          This wrapper generates session tokens server-side.
+                        */}
                       </div>
                     ) : (
                       <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
                         <p className="text-sm text-blue-800 text-center">
-                          <strong>Note:</strong> Please sign in with your CDP Embedded Wallet to use the Fund Card
+                          <strong>Note:</strong> Please sign in with your CDP
+                          Embedded Wallet to use the Fund Card
                         </p>
                       </div>
                     )}

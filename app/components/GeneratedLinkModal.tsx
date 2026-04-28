@@ -1,5 +1,14 @@
 "use client";
 
+import { Button } from "@coinbase/cds-web/buttons";
+import { Box, VStack } from "@coinbase/cds-web/layout";
+import {
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+} from "@coinbase/cds-web/overlays";
+import { Text } from "@coinbase/cds-web/typography";
 import React, { memo } from "react";
 
 interface GeneratedLinkModalProps {
@@ -22,46 +31,36 @@ const GeneratedLinkModal = memo(function GeneratedLinkModal({
   const displayUrl = url.length > 500 ? url.substring(0, 500) + "..." : url;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-lg">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold text-gray-900">{title}</h3>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-            aria-label="Close"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="mb-4">
-          <p className="text-gray-700 mb-2">
+    <Modal visible onRequestClose={onClose}>
+      <ModalHeader closeAccessibilityLabel="Close" title={title} />
+      <ModalBody tabIndex={0}>
+        <VStack gap={2}>
+          <Text as="p" font="body">
             URL to redirect users to Coinbase:
-          </p>
-          <div className="bg-blue-50 p-3 rounded-lg overflow-hidden border border-blue-100">
-            <div className="text-xs text-gray-800 break-all max-h-20 overflow-y-auto">
+          </Text>
+          <Box
+            background="bgAlternate"
+            bordered
+            borderRadius={300}
+            padding={2}
+            overflow="auto"
+            maxHeight={120}
+          >
+            <Text as="div" mono font="caption" overflow="break">
               {displayUrl}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            onClick={onCopy}
-            className="flex-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 py-2 px-4 rounded-lg font-medium"
-          >
+            </Text>
+          </Box>
+        </VStack>
+      </ModalBody>
+      <ModalFooter
+        secondaryAction={
+          <Button onClick={onCopy} variant="secondary">
             Copy URL
-          </button>
-          <button
-            onClick={onOpen}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium"
-          >
-            Open URL
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        }
+        primaryAction={<Button onClick={onOpen}>Open URL</Button>}
+      />
+    </Modal>
   );
 });
 

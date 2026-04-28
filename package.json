@@ -9,18 +9,17 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@coinbase/cdp-core": "^0.0.58",
-    "@coinbase/cdp-hooks": "^0.0.58",
-    "@coinbase/cdp-react": "^0.0.58",
+    "@coinbase/cdp-core": "^0.0.102",
+    "@coinbase/cdp-hooks": "^0.0.102",
+    "@coinbase/cdp-react": "^0.0.102",
     "@coinbase/cdp-sdk": "^1.21.0",
+    "@coinbase/cds-web": "^8.66.1",
     "@coinbase/onchainkit": "latest",
-    "@nextui-org/react": "^2.6.11",
     "@privy-io/react-auth": "^2.6.2",
-    "@react-types/shared": "^3.27.0",
     "@tanstack/react-query": "^5",
     "@types/jsonwebtoken": "^9.0.10",
     "canvas-confetti": "^1.9.3",
-    "framer-motion": "^12.4.10",
+    "framer-motion": "^10.18.0",
     "jose": "^6.0.11",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.479.0",
@@ -31,6 +30,7 @@
     "siwe": "3.0.0",
     "viem": "^2.17.4",
     "wagmi": "^2.11.0",
+    "x402-fetch": "^1.2.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {

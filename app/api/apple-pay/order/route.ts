@@ -7,6 +7,7 @@ import { rateLimit } from '../../../utils/rateLimit';
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || [
   'http://localhost:3000',
   'http://localhost:3001',
+  'http://localhost:3010',
   // Production domains
   'https://onramp-demo-application-git-main-coinbase-vercel.vercel.app',
   'https://onramp-demo-application.vercel.app',
@@ -118,12 +119,12 @@ export async function POST(request: NextRequest) {
     const { email, phoneNumber, amount, asset, network, destinationAddress } = body;
 
     logger.info('Apple Pay order request received', {
-      email,
-      phoneNumber: phoneNumber ? `${phoneNumber.substring(0, 5)}...` : 'missing',
       amount,
       asset,
       network,
-      destinationAddress: destinationAddress ? `${destinationAddress.substring(0, 10)}...` : 'missing'
+      hasEmail: !!email,
+      hasPhoneNumber: !!phoneNumber,
+      hasDestinationAddress: !!destinationAddress,
     });
 
     // Validate required fields
@@ -146,7 +147,7 @@ export async function POST(request: NextRequest) {
 
     // Validate phone number format (US only)
     if (!phoneNumber.match(/^\+1\d{10}$/)) {
-      logger.warn('Invalid phone number format', { phoneNumber: phoneNumber.substring(0, 5) + '...' });
+      logger.warn('Invalid phone number format');
       return NextResponse.json(
         { 
           error: 'Invalid phone number format. Must be +1XXXXXXXXXX (US only)',
@@ -184,7 +185,8 @@ export async function POST(request: NextRequest) {
     // SANDBOX MODE: Use sandbox prefix for testing (no real charges)
     // This ensures all transactions are in sandbox mode and no real funds are transferred
     // Combined with useApplePaySandbox=true on the frontend, this provides full sandbox testing
-    const partnerUserRef = `sandbox-${email.split('@')[0]}-${Date.now()}`;
+    const randomSuffix = Math.random().toString(36).slice(2, 10);
+    const partnerUserRef = `sandbox-${Date.now()}-${randomSuffix}`;
     logger.info('Using sandbox mode', { partnerUserRef });
     
     // Get current timestamp for agreements
@@ -261,13 +263,12 @@ export async function POST(request: NextRequest) {
       logger.warn('No valid origin - domain not included');
     }
 
-    logger.info('Creating Apple Pay order', { 
-      email, 
-      asset, 
-      network, 
+    logger.info('Creating Apple Pay order', {
+      asset,
+      network,
       amount,
       partnerUserRef,
-      requestBody: JSON.stringify(requestBody, null, 2) // Log full request for debugging
+      hasDomain: !!requestBody.domain,
     });
 
     const response = await fetch(cdpApiUrl, {

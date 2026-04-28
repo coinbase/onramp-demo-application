@@ -10,7 +10,6 @@ import {
 export async function generateSecureToken({
   ethAddress,
   blockchains,
-  partnerUserId,
 }: {
   ethAddress: string;
   aggregatorInputs?: AggregatorInputParams;
@@ -19,9 +18,17 @@ export async function generateSecureToken({
   partnerUserId?: string;
 }): Promise<string> {
   try {
-    const response = await fetch('/api/secure-token', {
+    const response = await fetch('/api/session', {
       method: 'POST',
-      body: JSON.stringify({ ethAddress, blockchains, partnerUserId }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        addresses: [{
+          address: ethAddress,
+          blockchains: blockchains?.length ? blockchains : ['base'],
+        }],
+      }),
     });
     if (!response.ok) {
       console.log(await response.text());
@@ -38,7 +45,7 @@ export async function generateSecureToken({
 
 export async function generateSellConfig() {
   try {
-    const response = await fetch('/api/sell-config-api', {
+    const response = await fetch('/api/sell-config', {
       method: 'GET',
     });
     if (!response.ok) {
@@ -57,10 +64,12 @@ export async function generateSellOptions({
   subdivision,
 }: SellOptionsRequest) {
   try {
-    const response = await fetch('/api/sell-options-api', {
-      method: 'POST',
-      body: JSON.stringify({ country, subdivision }),
-    });
+    const params = new URLSearchParams({ country });
+    if (subdivision) {
+      params.append('subdivision', subdivision);
+    }
+
+    const response = await fetch(`/api/sell-options?${params.toString()}`);
 
     if (!response.ok) {
       console.log(await response.status);
@@ -76,8 +85,11 @@ export async function generateSellOptions({
 
 export async function generateSellQuote(request: SellQuoteRequest) {
   try {
-    const response = await fetch('/api/sell-quote-api', {
+    const response = await fetch('/api/sell-quote', {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(request),
     });
 
@@ -102,9 +114,12 @@ export async function setSession({
   signature: `0x${string}`;
 }) {
   try {
-    const response = await fetch('/api/session', {
+    const response = await fetch('/api/auth', {
       method: 'POST',
-      body: JSON.stringify({ message, signature }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ message: message.prepareMessage(), signature }),
     });
 
     if (!response.ok) {
